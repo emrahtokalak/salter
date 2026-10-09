@@ -3720,9 +3720,9 @@ public final class ServiceSupervisor {
     @ObservationIgnored private var expectsPort = false
     @ObservationIgnored private var generation = 0
 
-    public init(id: String, logs: LogBuffer = LogBuffer(), fileLog: LogFileWriter? = nil, now: @escaping () -> Date = { Date() }) {
+    public init(id: String, logs: LogBuffer? = nil, fileLog: LogFileWriter? = nil, now: @escaping () -> Date = { Date() }) {
         self.id = id
-        self.logs = logs
+        self.logs = logs ?? LogBuffer()
         self.fileLog = fileLog
         self.now = now
     }
