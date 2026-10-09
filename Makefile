@@ -4,13 +4,21 @@ TEST_FLAGS := -Xswiftc -F -Xswiftc $(CLT)/Library/Developer/Frameworks \
 	-Xlinker -rpath -Xlinker $(CLT)/Library/Developer/usr/lib
 APP := build/DevLauncher.app
 
-.PHONY: build test app install icon clean
+.PHONY: build test run app install icon clean
 
 build:
 	swift build
 
 test:
 	swift test $(TEST_FLAGS) $(if $(FILTER),--filter '$(FILTER)',)
+
+# Developer mode: runs the release binary directly (no .app bundle). Notifications and
+# launch-at-login are unavailable in this mode.
+run:
+	swift build -c release
+	mkdir -p $(HOME)/Library/Logs/DevLauncher
+	@if pgrep -qf '.build/release/DevLauncher'; then echo 'DevLauncher zaten çalışıyor'; \
+	else nohup .build/release/DevLauncher > $(HOME)/Library/Logs/DevLauncher/app.log 2>&1 & echo 'DevLauncher başlatıldı'; fi
 
 app:
 	swift build -c release

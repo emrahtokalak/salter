@@ -8,6 +8,13 @@ server'ları) VS Code açmadan başlatıp durduran native macOS menu bar + masa�
     make install        # build/DevLauncher.app → ~/Applications/DevLauncher.app (ad-hoc imzalı)
     open ~/Applications/DevLauncher.app
 
+Şirket politikası imzasız `.app` paketini engelliyorsa (ör. BeyondTrust "Local Admin" uyarısı),
+onay gelene kadar geliştirici modunda çalıştır:
+
+    make run            # release binary'yi arka planda başlatır; log: ~/Library/Logs/DevLauncher/app.log
+
+Bu modda macOS bildirimleri ve "Login'de başlat" kullanılamaz.
+
 Geliştirirken:
 
     make build          # debug derleme
