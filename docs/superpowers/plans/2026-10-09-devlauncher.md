@@ -910,9 +910,9 @@ import Testing
 
     @Test func mediaPipelineKeepsAllWorkers() throws {
         let r = try translate("media-pipeline")
-        #expect(r.services.count == 10)
+        #expect(r.services.count == 11)
         #expect(r.skipped.isEmpty)
-        #expect(Set(r.services.map(\.id)).count == 10)
+        #expect(Set(r.services.map(\.id)).count == 11)
         let transcode = try #require(r.services.first { $0.definition.name == "Temporal: Process Transcode Worker" })
         #expect(transcode.definition.command == ["/w/media-pipeline/.venv/bin/python", "-m", "workflows.process_transcode.launcher"])
         #expect(transcode.definition.env["TEMPORAL_TASK_QUEUE"] == "process-transcode-task-queue")

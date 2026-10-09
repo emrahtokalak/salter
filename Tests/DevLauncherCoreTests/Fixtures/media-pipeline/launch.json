@@ -1,0 +1,174 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Run All Workflows",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "main",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: GPU Workers (Transcode)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "main_gpu",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Standard Workers (Produce + Post Processing)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "main_standard",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": "Temporal: Scan New Media Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "workflows.scan_new_media.launcher",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python",
+                "TEMPORAL_TASK_QUEUE": "scan-new-media-queue"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Produce Tasks Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "workflows.produce_tasks.launcher",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python",
+                "TEMPORAL_TASK_QUEUE": "produce-tasks-queue"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Copy Media to S3 Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "workflows.copy_media_to_s3.launcher",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python",
+                "TEMPORAL_TASK_QUEUE": "copy-media-queue"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Process Transcode Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "workflows.process_transcode.launcher",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python",
+                "TEMPORAL_TASK_QUEUE": "process-transcode-task-queue"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Process Thumbnails Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "workflows.process_thumbnails.launcher",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python",
+                "TEMPORAL_TASK_QUEUE": "process-thumbnails-task-queue"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Metadata Enrichment Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "workflows.metadata_enrichment.launcher",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python",
+                "TEMPORAL_TASK_QUEUE": "metadata-enrichment-task-queue"
+            },
+            "args": [],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Post-Transcode Orchestrator Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "main_standard",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python"
+            },
+            "args": ["--worker", "post-transcode-orchestrator"],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        },
+        {
+            "name": "Temporal: Collect Order Events Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "main",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src/python"
+            },
+            "args": ["--worker", "collect-order-events"],
+            "stopOnEntry": false,
+            "justMyCode": false,
+            "gevent": false
+        }
+    ],
+    "inputs": []
+}
