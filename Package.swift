@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "DevLauncher",
+    name: "Salter",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "DevLauncherCore"),
-        .executableTarget(name: "DevLauncher", dependencies: ["DevLauncherCore"]),
+        .target(name: "SalterCore"),
+        .executableTarget(name: "Salter", dependencies: ["SalterCore"]),
         .testTarget(
-            name: "DevLauncherCoreTests",
-            dependencies: ["DevLauncherCore"],
+            name: "SalterCoreTests",
+            dependencies: ["SalterCore"],
             exclude: ["Fixtures"]
         ),
     ],

@@ -2,7 +2,7 @@ CLT := /Library/Developer/CommandLineTools
 TEST_FLAGS := -Xswiftc -F -Xswiftc $(CLT)/Library/Developer/Frameworks \
 	-Xlinker -rpath -Xlinker $(CLT)/Library/Developer/Frameworks \
 	-Xlinker -rpath -Xlinker $(CLT)/Library/Developer/usr/lib
-APP := build/DevLauncher.app
+APP := build/Salter.app
 
 .PHONY: build test run app install icon clean
 
@@ -16,23 +16,23 @@ test:
 # launch-at-login are unavailable in this mode.
 run:
 	swift build -c release
-	mkdir -p $(HOME)/Library/Logs/DevLauncher
-	@if pgrep -qf '.build/release/DevLauncher'; then echo 'DevLauncher zaten çalışıyor'; \
-	else nohup .build/release/DevLauncher > $(HOME)/Library/Logs/DevLauncher/app.log 2>&1 & echo 'DevLauncher başlatıldı'; fi
+	mkdir -p $(HOME)/Library/Logs/Salter
+	@if pgrep -qf '.build/release/Salter'; then echo 'Şalter zaten çalışıyor'; \
+	else nohup .build/release/Salter > $(HOME)/Library/Logs/Salter/app.log 2>&1 & echo 'Şalter başlatıldı'; fi
 
 app:
 	swift build -c release
 	rm -rf $(APP)
 	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
-	cp .build/release/DevLauncher $(APP)/Contents/MacOS/DevLauncher
+	cp .build/release/Salter $(APP)/Contents/MacOS/Salter
 	cp Resources/Info.plist $(APP)/Contents/Info.plist
 	cp Resources/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns
 	codesign -s - --force --deep $(APP)
 
 install: app
 	mkdir -p $(HOME)/Applications
-	rm -rf $(HOME)/Applications/DevLauncher.app
-	cp -R $(APP) $(HOME)/Applications/DevLauncher.app
+	rm -rf $(HOME)/Applications/Salter.app
+	cp -R $(APP) $(HOME)/Applications/Salter.app
 
 icon:
 	rm -rf build/AppIcon.iconset
