@@ -92,6 +92,8 @@ public enum ANSIParser {
     }
 
     static func apply(_ params: String, to style: inout ANSIStyle) {
+        // Private or malformed parameters (e.g. "-1", ">4") are not SGR colors; ignore the sequence.
+        guard params.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == ";") }) else { return }
         let codes = params.isEmpty
             ? [0]
             : params.split(separator: ";", omittingEmptySubsequences: false).map { Int($0) ?? 0 }
@@ -110,10 +112,13 @@ public enum ANSIParser {
             case 90...97: style.foreground = .bright(code - 90)
             case 38, 48:
                 if k + 2 < codes.count, codes[k + 1] == 5 {
-                    if code == 38 { style.foreground = .palette(codes[k + 2]) }
+                    if code == 38, (0...255).contains(codes[k + 2]) { style.foreground = .palette(codes[k + 2]) }
                     k += 2
                 } else if k + 4 < codes.count, codes[k + 1] == 2 {
-                    if code == 38 { style.foreground = .rgb(codes[k + 2], codes[k + 3], codes[k + 4]) }
+                    let rgb = Array(codes[(k + 2)...(k + 4)])
+                    if code == 38, rgb.allSatisfy({ (0...255).contains($0) }) {
+                        style.foreground = .rgb(rgb[0], rgb[1], rgb[2])
+                    }
                     k += 4
                 }
             default:

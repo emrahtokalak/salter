@@ -88,6 +88,13 @@ public final class ServiceSupervisor {
 
     public func stop(grace: TimeInterval = 5) async {
         guard let group = pgid, status.isActive, status != .stopping else { return }
+        if isAdopted, let record, !Self.isSameProcess(record) {
+            // The pid now belongs to another process; never signal its group.
+            clearProcessState()
+            appendSystem(["──── sahiplenilen süreç zaten sonlanmış ────"])
+            setStatus(.stopped)
+            return
+        }
         setStatus(.stopping)
         appendSystem(["──── durduruluyor (SIGTERM) ────"])
         let killed = await ProcessRunner.terminateGroup(group, grace: grace)
@@ -113,9 +120,12 @@ public final class ServiceSupervisor {
     }
 
     /// Updates readiness and ports from a port snapshot; also notices when an adopted process exits.
-    public func refresh(with snapshot: [ListeningSocket], isAlive: (pid_t) -> Bool = { ProcessInspector.isAlive($0) }) {
+    public func refresh(
+        with snapshot: [ListeningSocket],
+        isSameProcess: (RuntimeRecord) -> Bool = { ServiceSupervisor.isSameProcess($0) }
+    ) {
         guard let group = pgid else { return }
-        if isAdopted, let record, !isAlive(record.pid) {
+        if isAdopted, let record, !isSameProcess(record) {
             clearProcessState()
             appendSystem(["──── sahiplenilen süreç sonlandı ────"])
             setStatus(.stopped)
@@ -197,6 +207,11 @@ public final class ServiceSupervisor {
         guard newStatus != status else { return }
         status = newStatus
         onStatusChange?(self)
+    }
+
+    /// True while `record.pid` is still the process that was recorded (guards against pid reuse).
+    public nonisolated static func isSameProcess(_ record: RuntimeRecord) -> Bool {
+        ProcessInspector.startTime(of: record.pid) == record.startTime
     }
 
     private static func timestamp(_ date: Date) -> String {

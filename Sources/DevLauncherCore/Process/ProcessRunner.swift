@@ -17,8 +17,38 @@ public final class SpawnedProcess: @unchecked Sendable {
         self.startTime = startTime
     }
 
+    /// A partial line (e.g. a prompt) is shown once output has paused this long.
+    static let idleFlushDelay: TimeInterval = 0.5
+
+    /// Line splitting shared by the reader and the idle-flush timer; lines are delivered under the lock to keep order.
     final class LineBufferBox: @unchecked Sendable {
-        var buffer = LineBuffer()
+        private let lock = NSLock()
+        private var buffer = LineBuffer()
+        private var token = 0
+
+        /// Delivers complete lines; returns a token when a partial line is left waiting.
+        func append(_ data: Data, deliver: ([String]) -> Void) -> Int? {
+            lock.lock()
+            defer { lock.unlock() }
+            let lines = buffer.append(data)
+            if !lines.isEmpty { deliver(lines) }
+            token += 1
+            return buffer.hasPending ? token : nil
+        }
+
+        /// Delivers the partial line if no output arrived since `expected`.
+        func flushIfIdle(token expected: Int, deliver: ([String]) -> Void) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard expected == token, let rest = buffer.flush() else { return }
+            deliver([rest])
+        }
+
+        func finish(deliver: ([String]) -> Void) {
+            lock.lock()
+            defer { lock.unlock() }
+            if let rest = buffer.flush() { deliver([rest]) }
+        }
     }
 
     func attachReader(fd: Int32, kind: OutputKind, onLines: @escaping ProcessRunner.LinesHandler) {
@@ -28,12 +58,15 @@ public final class SpawnedProcess: @unchecked Sendable {
             let data = h.availableData
             if data.isEmpty {
                 h.readabilityHandler = nil
-                if let rest = box.buffer.flush() { onLines(kind, [rest]) }
+                box.finish { onLines(kind, $0) }
                 self.queue.async { self.handles.removeAll { $0 === h } }
                 return
             }
-            let lines = box.buffer.append(data)
-            if !lines.isEmpty { onLines(kind, lines) }
+            if let token = box.append(data, deliver: { onLines(kind, $0) }) {
+                DispatchQueue.global().asyncAfter(deadline: .now() + Self.idleFlushDelay) {
+                    box.flushIfIdle(token: token) { onLines(kind, $0) }
+                }
+            }
         }
         queue.sync { handles.append(handle) }
     }

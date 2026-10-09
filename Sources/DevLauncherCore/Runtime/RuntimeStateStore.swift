@@ -33,11 +33,11 @@ public final class RuntimeStateStore {
         try? JSONEncoder().encode(records).write(to: fileURL, options: .atomic)
     }
 
-    /// Records whose process still exists and is the same process (start time matches).
+    /// Records whose process still exists, is the same process (start time matches) and leads its own group.
     public static func liveOrphans(
         _ records: [RuntimeRecord],
         startTime: (pid_t) -> UInt64? = { ProcessInspector.startTime(of: $0) }
     ) -> [RuntimeRecord] {
-        records.filter { startTime($0.pid) == $0.startTime }
+        records.filter { $0.pgid == $0.pid && startTime($0.pid) == $0.startTime }
     }
 }

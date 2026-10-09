@@ -1,23 +1,32 @@
 import Foundation
 
-/// Splits a byte stream into lines; partial lines wait for more data.
+/// Splits a byte stream into lines on `\n`, `\r\n` or a lone `\r` (progress bars); partial lines wait for more data.
 public struct LineBuffer: Sendable {
     /// Lines longer than this are emitted without waiting for a newline.
     static let maxPending = 64 * 1024
 
     private var pending = Data()
+    private var lastWasCarriageReturn = false
 
     public init() {}
 
+    public var hasPending: Bool { !pending.isEmpty }
+
     public mutating func append(_ data: Data) -> [String] {
-        pending.append(data)
         var lines: [String] = []
-        var start = pending.startIndex
-        while let newline = pending[start...].firstIndex(of: 0x0A) {
-            lines.append(Self.decode(pending[start..<newline]))
-            start = pending.index(after: newline)
+        for byte in data {
+            switch byte {
+            case 0x0A where lastWasCarriageReturn:
+                lastWasCarriageReturn = false
+            case 0x0A, 0x0D:
+                lines.append(Self.decode(pending))
+                pending.removeAll(keepingCapacity: true)
+                lastWasCarriageReturn = byte == 0x0D
+            default:
+                pending.append(byte)
+                lastWasCarriageReturn = false
+            }
         }
-        if start != pending.startIndex { pending = Data(pending[start...]) }
         if pending.count > Self.maxPending {
             lines.append(Self.decode(pending))
             pending = Data()

@@ -22,6 +22,13 @@ import Testing
         #expect(RuntimeStateStore.liveOrphans(records) { table[$0] }.map(\.serviceID) == ["a"])
     }
 
+    @Test func recordsWhoseGroupIsNotTheirOwnPidAreRejected() throws {
+        let me = getpid()
+        let start = try #require(ProcessInspector.startTime(of: me))
+        let record = RuntimeRecord(serviceID: "me", pid: me, pgid: me + 1, startTime: start)
+        #expect(RuntimeStateStore.liveOrphans([record]).isEmpty)
+    }
+
     @Test func currentProcessCountsAsLive() throws {
         let me = getpid()
         let start = try #require(ProcessInspector.startTime(of: me))

@@ -14,6 +14,7 @@ struct ServiceSettingsForm: View {
     @State private var reload = false
     @State private var port = ""
     @State private var saved = false
+    @State private var baseline: OverrideEditor.Fields?
 
     var body: some View {
         Form {
@@ -68,38 +69,41 @@ struct ServiceSettingsForm: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear { load(service.effective, extraEnv: service.overrides.env ?? [:]) }
+        .onAppear { load(OverrideEditor.fields(of: service)) }
     }
 
-    private func load(_ definition: ServiceDefinition, extraEnv: [String: String]) {
-        name = definition.name
-        command = ShellWords.join(definition.command)
-        cwd = definition.cwd
-        envFile = definition.envFile ?? ""
-        reload = definition.reloadEnabled
-        port = definition.portHint.map(String.init) ?? ""
-        envText = extraEnv.keys.sorted().map { "\($0)=\(extraEnv[$0] ?? "")" }.joined(separator: "\n")
+    private func load(_ fields: OverrideEditor.Fields) {
+        name = fields.name
+        command = ShellWords.join(fields.command)
+        cwd = fields.cwd
+        envFile = fields.envFile
+        reload = fields.reloadEnabled
+        port = fields.portHint.map(String.init) ?? ""
+        envText = fields.extraEnv.keys.sorted().map { "\($0)=\(fields.extraEnv[$0] ?? "")" }.joined(separator: "\n")
+        baseline = fields
         saved = false
     }
 
     private func save() {
-        let discovered = service.discovered
-        var overrides = ServiceOverrides()
-        if name != discovered.name { overrides.name = name }
-        let words = ShellWords.split(command)
-        if words != discovered.command { overrides.command = words }
-        if cwd != discovered.cwd { overrides.cwd = cwd }
-        if envFile != (discovered.envFile ?? "") { overrides.envFile = envFile }
-        let extra = DotEnvParser.parse(envText)
-        if !extra.isEmpty { overrides.env = extra }
-        if reload != discovered.reloadEnabled { overrides.reloadEnabled = reload }
-        if let value = Int(port), value != discovered.portHint { overrides.portHint = value }
-        model.updateOverrides(service.id, overrides)
+        guard let baseline else { return }
+        let edited = OverrideEditor.Fields(
+            name: name,
+            command: ShellWords.split(command),
+            cwd: cwd,
+            envFile: envFile,
+            extraEnv: DotEnvParser.parse(envText),
+            reloadEnabled: reload,
+            portHint: Int(port)
+        )
+        model.updateOverrides(service.id, OverrideEditor.apply(edited: edited, baseline: baseline, to: service))
+        self.baseline = edited
         saved = true
     }
 
     private func resetToDiscovered() {
         model.updateOverrides(service.id, ServiceOverrides())
-        load(service.discovered, extraEnv: [:])
+        var reset = service
+        reset.overrides = ServiceOverrides()
+        load(OverrideEditor.fields(of: reset))
     }
 }

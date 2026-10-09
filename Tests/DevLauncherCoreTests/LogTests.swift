@@ -26,6 +26,13 @@ import Testing
         ])
     }
 
+    @Test func ignoresMalformedParameters() {
+        #expect(ANSIParser.parse("\u{1B}[38;5;-1mX") == [ANSISpan(text: "X", style: ANSIStyle())])
+        #expect(ANSIParser.parse("\u{1B}[38;5;999mY") == [ANSISpan(text: "Y", style: ANSIStyle())])
+        #expect(ANSIParser.parse("\u{1B}[38;2;300;0;0mZ") == [ANSISpan(text: "Z", style: ANSIStyle())])
+        #expect(ANSIParser.parse("\u{1B}[1m\u{1B}[>4;2mW") == [ANSISpan(text: "W", style: ANSIStyle(bold: true))])
+    }
+
     @Test func stripsOtherEscapeSequences() {
         #expect(ANSIParser.strip("\u{1B}[2Kline\u{1B}[1A") == "line")
         #expect(ANSIParser.strip("\u{1B}]8;;http://x\u{07}link\u{1B}]8;;\u{1B}\\ done") == "link done")

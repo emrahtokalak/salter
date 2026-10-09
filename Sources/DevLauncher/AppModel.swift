@@ -68,7 +68,8 @@ final class AppModel {
         for record in records {
             if adopt {
                 supervisors[record.serviceID]?.adopt(record)
-            } else {
+            } else if !RuntimeStateStore.liveOrphans([record]).isEmpty {
+                // Re-checked after the prompt: the pid may have been reused while it was open.
                 let pgid = record.pgid
                 Task.detached { await ProcessRunner.terminateGroup(pgid) }
             }

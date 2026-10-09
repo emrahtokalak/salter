@@ -60,7 +60,8 @@ enum ANSIRender {
         switch color {
         case .standard(let index), .bright(let index):
             return base[max(0, min(7, index))]
-        case .palette(let n):
+        case .palette(let raw):
+            let n = max(0, min(255, raw))
             if n < 16 { return base[n % 8] }
             if n < 232 {
                 let v = n - 16

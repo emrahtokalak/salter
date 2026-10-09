@@ -88,9 +88,19 @@ import Testing
     @Test func adoptedProcessExitIsNoticedOnRefresh() {
         let s = ServiceSupervisor(id: "t/adopt2")
         s.adopt(RuntimeRecord(serviceID: "t/adopt2", pid: 99_998, pgid: 99_998, startTime: 1))
-        s.refresh(with: [], isAlive: { _ in false })
+        s.refresh(with: [], isSameProcess: { _ in false })
         #expect(s.status == .stopped)
         #expect(s.runtimeRecord == nil)
+    }
+
+    @Test func reusedPidIsNotSignalledOnStop() async throws {
+        let process = try ProcessRunner.spawn(plan("sleep 100").request, onLines: { _, _ in }, onExit: { _ in })
+        let s = ServiceSupervisor(id: "t/reused")
+        s.adopt(RuntimeRecord(serviceID: "t/reused", pid: process.pid, pgid: process.pgid, startTime: process.startTime + 1))
+        await s.stop(grace: 1)
+        #expect(s.status == .stopped)
+        #expect(ProcessInspector.isGroupAlive(process.pgid))
+        await ProcessRunner.terminateGroup(process.pgid, grace: 1)
     }
 
     @Test func spawnFailureIsReportedAsCrash() {

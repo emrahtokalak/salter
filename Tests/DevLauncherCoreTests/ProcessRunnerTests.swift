@@ -73,6 +73,13 @@ final class OutputCollector: @unchecked Sendable {
         #expect(c.lines.last?.1 == "ağ değer")
     }
 
+    @Test func partialLineIsShownWhenOutputPauses() async throws {
+        let c = OutputCollector()
+        let process = try spawn(sh("printf 'Password: '; sleep 3"), into: c)
+        #expect(await waitUntil(timeout: 2) { c.lines.contains { $0.1 == "Password: " } })
+        await ProcessRunner.terminateGroup(process.pgid, grace: 1)
+    }
+
     @Test func terminateGroupKillsChildren() async throws {
         let c = OutputCollector()
         let process = try spawn(sh("sleep 100 & sleep 100 & echo ready; wait"), into: c)
