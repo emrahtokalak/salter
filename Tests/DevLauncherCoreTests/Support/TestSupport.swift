@@ -1,6 +1,9 @@
 import Foundation
 @testable import DevLauncherCore
 
+/// Swift Testing also declares `ExitStatus`; prefer ours inside the test module.
+typealias ExitStatus = DevLauncherCore.ExitStatus
+
 enum Fixtures {
     static let root = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

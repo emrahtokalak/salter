@@ -1,0 +1,22 @@
+import Foundation
+import Testing
+@testable import DevLauncherCore
+
+@Suite struct LineBufferTests {
+    @Test func splitsLinesAcrossChunks() {
+        var buffer = LineBuffer()
+        #expect(buffer.append(Data("a\nb".utf8)) == ["a"])
+        #expect(buffer.append(Data("c\r\nd\n".utf8)) == ["bc", "d"])
+        #expect(buffer.flush() == nil)
+        #expect(buffer.append(Data("tail".utf8)).isEmpty)
+        #expect(buffer.flush() == "tail")
+    }
+
+    @Test func flushesVeryLongLinesWithoutNewline() {
+        var buffer = LineBuffer()
+        let lines = buffer.append(Data(repeating: 0x78, count: 70_000))
+        #expect(lines.count == 1)
+        #expect(lines.first?.count == 70_000)
+        #expect(buffer.flush() == nil)
+    }
+}
