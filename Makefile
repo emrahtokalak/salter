@@ -10,7 +10,7 @@ build:
 	swift build
 
 test:
-	swift test $(TEST_FLAGS) $(if $(FILTER),--filter $(FILTER),)
+	swift test $(TEST_FLAGS) $(if $(FILTER),--filter '$(FILTER)',)
 
 app:
 	swift build -c release
