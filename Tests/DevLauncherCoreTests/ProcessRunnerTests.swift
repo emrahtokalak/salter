@@ -75,8 +75,8 @@ final class OutputCollector: @unchecked Sendable {
 
     @Test func terminateGroupKillsChildren() async throws {
         let c = OutputCollector()
-        let process = try spawn(sh("sleep 100 & sleep 100 & wait"), into: c)
-        try await Task.sleep(nanoseconds: 300_000_000)
+        let process = try spawn(sh("sleep 100 & sleep 100 & echo ready; wait"), into: c)
+        #expect(await waitUntil { c.lines.contains { $0.1 == "ready" } })
         #expect(ProcessInspector.isGroupAlive(process.pgid))
         let killed = await ProcessRunner.terminateGroup(process.pgid, grace: 3)
         #expect(!killed)
@@ -86,8 +86,8 @@ final class OutputCollector: @unchecked Sendable {
 
     @Test func escalatesToSigkill() async throws {
         let c = OutputCollector()
-        let process = try spawn(sh("trap '' TERM; sleep 100 & wait"), into: c)
-        try await Task.sleep(nanoseconds: 300_000_000)
+        let process = try spawn(sh("trap '' TERM; sleep 100 & echo ready; wait"), into: c)
+        #expect(await waitUntil { c.lines.contains { $0.1 == "ready" } })
         let killed = await ProcessRunner.terminateGroup(process.pgid, grace: 0.5)
         #expect(killed)
         #expect(await waitUntil { !ProcessInspector.isGroupAlive(process.pgid) })
