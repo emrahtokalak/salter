@@ -6,8 +6,12 @@ Teknik adı `salter` (paket, bundle id, klasörler); görünen adı **Şalter**.
 
 ## Kurulum
 
-    make install        # build/Salter.app → ~/Applications/Salter.app (ad-hoc imzalı)
+    make install        # build/Salter.app → ~/Applications/Salter.app
     open ~/Applications/Salter.app
+
+İmza: anahtar zincirinde "Developer ID Application" sertifikası varsa `make app` / `make run`
+onunla (hardened runtime + zaman damgası) imzalar, yoksa ad-hoc (`-`) imzaya düşer.
+Elle seçmek için: `make install SIGN_ID=-` veya `SIGN_ID="Developer ID Application: …"`.
 
 Şirket politikası imzasız `.app` paketini engelliyorsa (ör. BeyondTrust "Local Admin" uyarısı),
 onay gelene kadar geliştirici modunda çalıştır:
