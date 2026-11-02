@@ -67,4 +67,17 @@ import Testing
         #expect(ShellWords.join(["--port", "8010", "/a/b.py"]) == "--port 8010 /a/b.py")
         #expect(ShellWords.split("   ").isEmpty)
     }
+
+    @Test func manifestSourceRoundTrips() throws {
+        let s = ServiceSource.manifest("go:cmd/api")
+        #expect(s.kind == .manifest && s.name == "go:cmd/api")
+        let back = try JSONDecoder().decode(ServiceSource.self, from: JSONEncoder().encode(s))
+        #expect(back == s)
+    }
+
+    @Test func unknownSourceKindDecodesAsManual() throws {
+        let s = try JSONDecoder().decode(ServiceSource.self, from: Data(#"{"kind":"future","name":"x"}"#.utf8))
+        #expect(s.kind == .manual)
+        #expect(s.name == "x")
+    }
 }

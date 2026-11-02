@@ -1,5 +1,7 @@
 CLT := /Library/Developer/CommandLineTools
+# Swift Testing's macro plugin is not on the default plugin path with CLT-only toolchains.
 TEST_FLAGS := -Xswiftc -F -Xswiftc $(CLT)/Library/Developer/Frameworks \
+	-Xswiftc -plugin-path -Xswiftc $(CLT)/usr/lib/swift/host/plugins/testing \
 	-Xlinker -rpath -Xlinker $(CLT)/Library/Developer/Frameworks \
 	-Xlinker -rpath -Xlinker $(CLT)/Library/Developer/usr/lib
 # The macOS 27 SDK reimplements @State as a macro whose implementation

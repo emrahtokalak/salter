@@ -90,7 +90,7 @@ import Testing
         { "configurations": [
           { "name": "Input", "type": "debugpy", "request": "launch", "module": "x", "args": ["${input:port}"] },
           { "name": "Attach", "type": "debugpy", "request": "attach" },
-          { "name": "Node", "type": "node", "request": "launch", "program": "a.js" },
+          { "name": "Node", "type": "chrome", "request": "launch", "url": "http://localhost" },
           { "name": "Nothing", "type": "debugpy", "request": "launch" },
           { "name": "PortEnv", "type": "python", "request": "launch", "module": "worker", "env": { "PORT": "9001" } }
         ] }
@@ -110,5 +110,128 @@ import Testing
         #expect(split.args == ["app:app", "--port", "1"])
         #expect(split.extras == ["--reload-dir", "src", "--reload-include=*.yaml"])
         #expect(split.hadReload)
+    }
+
+    func translateJSON(_ json: String, repo: String = "/w/x") throws -> TranslationResult {
+        LaunchConfigTranslator.translate(try LaunchJsonParser.parse(Data(json.utf8)), repo: URL(fileURLWithPath: repo))
+    }
+
+    @Test func intentClassifierGoRunAndDebugMerge() throws {
+        let r = try translate("classifier-go")
+        #expect(r.services.count == 1)
+        let s = try #require(r.services.first)
+        #expect(s.id == "classifier-go/run")
+        #expect(s.source == .launchJson("Run"))
+        #expect(s.definition.command == ["go", "run", "./cmd/classifier"])
+        #expect(s.definition.cwd == "/w/classifier-go")
+        #expect(s.definition.envFile == "/w/classifier-go/.env")
+        #expect(!s.definition.supportsReload)
+        #expect(r.skipped.map(\.name) == ["Debug Tests (current package)"])
+        #expect(r.ecosystems == [.go])
+        #expect(r.warnings.isEmpty)
+    }
+
+    @Test func goExecModeBuildFlagsAndPreLaunchTask() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "Bin", "type": "go", "request": "launch", "mode": "exec",
+            "program": "${workspaceFolder}/bin/api", "args": ["-port", "9000"] },
+          { "name": "A", "type": "go", "request": "launch", "mode": "debug", "buildFlags": "-tags dev",
+            "program": "${workspaceFolder}", "preLaunchTask": "gen" }
+        ] }
+        """)
+        #expect(r.services.map(\.definition.command) == [["/w/x/bin/api", "-port", "9000"], ["go", "run", "-tags", "dev", "."]])
+        #expect(r.services.first?.definition.portHint == 9000)
+        #expect(r.warnings == ["A: preLaunchTask 'gen' çalıştırılmıyor"])
+    }
+
+    @Test func goProgramRelativeToCwdWithSpaces() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "In", "type": "go", "request": "launch", "cwd": "${workspaceFolder}/svc",
+            "program": "${workspaceFolder}/svc/cmd/a" },
+          { "name": "Out", "type": "go", "request": "launch", "cwd": "${workspaceFolder}/svc",
+            "program": "${workspaceFolder}/tools/gen" },
+          { "name": "NoProgram", "type": "go", "request": "launch" }
+        ] }
+        """, repo: "/w/my repo")
+        #expect(r.services.map(\.definition.command) == [["go", "run", "./cmd/a"], ["go", "run", "/w/my repo/tools/gen"]])
+        #expect(r.services.first?.definition.cwd == "/w/my repo/svc")
+        #expect(r.skipped == [SkippedConfig(name: "NoProgram", reason: "program tanımlı değil")])
+    }
+
+    @Test func nodeRuntimeExecutable() throws {
+        let r = try translateJSON("""
+        { "configurations": [ { "name": "Web", "type": "node", "request": "launch",
+          "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"] } ] }
+        """)
+        #expect(r.services.map(\.definition.command) == [["npm", "run", "dev"]])
+        #expect(r.ecosystems == [.node])
+    }
+
+    @Test func nodeProgram() throws {
+        let r = try translateJSON("""
+        { "configurations": [ { "name": "Srv", "type": "pwa-node", "request": "launch",
+          "program": "${workspaceFolder}/server.js", "args": ["--port", "4000"] } ] }
+        """)
+        let d = try #require(r.services.first).definition
+        #expect(d.command == ["node", "/w/x/server.js", "--port", "4000"])
+        #expect(d.portHint == 4000)
+    }
+
+    @Test func nodeTypeScriptWithoutRuntimeSkipped() throws {
+        let r = try translateJSON("""
+        { "configurations": [ { "name": "TS", "type": "node", "request": "launch", "program": "${workspaceFolder}/src/main.ts" },
+          { "name": "Empty", "type": "node", "request": "launch" } ] }
+        """)
+        #expect(r.services.isEmpty)
+        #expect(r.skipped == [
+            SkippedConfig(name: "TS", reason: "TypeScript programı için runtimeExecutable gerekli"),
+            SkippedConfig(name: "Empty", reason: "program tanımlı değil"),
+        ])
+    }
+
+    @Test func rustCargoBlock() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "Srv", "type": "lldb", "request": "launch",
+            "cargo": { "args": ["build", "--bin=srv", "--package=api"] }, "args": ["-v"] },
+          { "name": "Plain", "type": "lldb", "request": "launch", "cargo": { "args": ["build"] } }
+        ] }
+        """)
+        #expect(r.services.map(\.definition.command) == [
+            ["cargo", "run", "--bin=srv", "--package=api", "--", "-v"],
+            ["cargo", "run"],
+        ])
+        #expect(r.ecosystems == [.rust])
+    }
+
+    @Test func rustWithoutCargoSkipped() throws {
+        let r = try translateJSON("""
+        { "configurations": [ { "name": "Bin", "type": "lldb", "request": "launch", "program": "${workspaceFolder}/target/debug/srv" } ] }
+        """)
+        #expect(r.skipped == [SkippedConfig(name: "Bin", reason: "cargo bloğu yok; Cargo.toml kullanılıyor")])
+    }
+
+    @Test func rustCargoTestSkipped() throws {
+        let r = try translateJSON("""
+        { "configurations": [ { "name": "T", "type": "lldb", "request": "launch", "cargo": { "args": ["test", "--no-run"] } } ] }
+        """)
+        #expect(r.skipped == [SkippedConfig(name: "T", reason: "test konfigürasyonu")])
+    }
+
+    @Test func javaAndCoreclrSkipped() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "J", "type": "java", "request": "launch", "mainClass": "a.App" },
+          { "name": "C", "type": "coreclr", "request": "launch", "program": "${workspaceFolder}/bin/Debug/net8.0/Api.dll" }
+        ] }
+        """)
+        #expect(r.services.isEmpty)
+        #expect(r.ecosystems.isEmpty)
+        #expect(r.skipped == [
+            SkippedConfig(name: "J", reason: "proje dosyasından çalıştırılıyor"),
+            SkippedConfig(name: "C", reason: "proje dosyasından çalıştırılıyor"),
+        ])
     }
 }

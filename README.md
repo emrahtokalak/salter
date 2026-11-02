@@ -49,7 +49,19 @@ Geliştirirken:
 
 ## Nasıl çalışır
 
-- Servisler `.vscode/launch.json` (debugpy) ve `package.json` (`dev`/`start`) dosyalarından keşfedilir.
+- Servisler önce `.vscode/launch.json`'dan keşfedilir:
+  - `debugpy`/`python`: `.venv` Python'u ile; uvicorn için reload anahtarı
+  - `go`: `go run <program>` (`mode: exec` ise derlenmiş binary)
+  - `node`/`pwa-node`: `runtimeExecutable` + `runtimeArgs` ya da `node <program>`
+  - `lldb` (CodeLLDB): `cargo` bloğundan `cargo run …`
+  - `java`/`coreclr` atlanır; proje dosyasından çalıştırılır
+- `package.json` `dev`/`start` script'i (aynı komutu çalıştıran launch.json node konfigürasyonu tekrar sayılmaz).
+- Bir dil için launch.json servis üretmediyse proje dosyasına bakılır:
+  - Go: `go.mod` → her `cmd/<ad>` ve kökteki `package main` için `go run`
+  - Rust: `Cargo.toml` (workspace dahil) → her binary için `cargo run [-p] [--bin]`
+  - Java: `pom.xml` (spring-boot / exec eklentisi) ya da `build.gradle(.kts)` (Spring Boot / application); `mvnw`/`gradlew` tercih edilir
+  - .NET: Web/Worker ya da `Exe` tipindeki her `*.csproj` → `dotnet run --project`; test projeleri hariç
+- Yeni servislerde env dosyası `<repo>/.env`. Otomatik yeniden yükleme yalnızca uvicorn'da var; diğerleri elle restart edilir.
 - Python servisleri `<repo>/.venv/bin/python` ile, env katmanları VS Code'daki gibi (`.env` + config `env`) çalışır.
 - Her servis kendi process group'unda başlar; durdurma tüm gruba SIGTERM, 5 sn sonra SIGKILL gönderir.
 - Ayarlar: `~/Library/Application Support/Salter/config.json`

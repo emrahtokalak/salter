@@ -7,7 +7,13 @@ public enum PackageManager: String, Codable, CaseIterable, Sendable {
 /// Where a service definition came from; used to match services across rescans.
 public struct ServiceSource: Codable, Equatable, Hashable, Sendable {
     public enum Kind: String, Codable, Sendable {
-        case launchJson, packageJson, manual
+        case launchJson, packageJson, manifest, manual
+
+        /// Unknown kinds (written by a newer Şalter) decode as `.manual` instead of failing the whole config.
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = Kind(rawValue: raw) ?? .manual
+        }
     }
 
     public var kind: Kind
@@ -25,6 +31,11 @@ public struct ServiceSource: Codable, Equatable, Hashable, Sendable {
 
     public static func packageJson(_ script: String) -> ServiceSource {
         ServiceSource(kind: .packageJson, name: script)
+    }
+
+    /// Detected from a project manifest; `target` is "<ecosystem>:<relative target>", e.g. "go:cmd/api".
+    public static func manifest(_ target: String) -> ServiceSource {
+        ServiceSource(kind: .manifest, name: target)
     }
 
     public static let manual = ServiceSource(kind: .manual)
@@ -148,9 +159,19 @@ public struct SkippedConfig: Equatable, Sendable {
 public struct TranslationResult: Equatable, Sendable {
     public var services: [DiscoveredService]
     public var skipped: [SkippedConfig]
+    public var warnings: [String]
+    /// Ecosystems that produced at least one service.
+    public var ecosystems: Set<Ecosystem>
 
-    public init(services: [DiscoveredService], skipped: [SkippedConfig]) {
+    public init(
+        services: [DiscoveredService],
+        skipped: [SkippedConfig],
+        warnings: [String] = [],
+        ecosystems: Set<Ecosystem> = []
+    ) {
         self.services = services
         self.skipped = skipped
+        self.warnings = warnings
+        self.ecosystems = ecosystems
     }
 }
