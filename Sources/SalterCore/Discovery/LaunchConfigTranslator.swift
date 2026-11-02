@@ -1,8 +1,7 @@
 import Foundation
 
-/// Turns VS Code debugpy launch configurations into runnable service definitions.
+/// Turns VS Code launch configurations (Python, Go, Node, CodeLLDB) into runnable service definitions.
 public enum LaunchConfigTranslator {
-    static let supportedTypes: Set<String> = ["debugpy", "python"]
     static let reloadValueFlags: Set<String> = ["--reload-dir", "--reload-include", "--reload-exclude", "--reload-delay"]
 
     struct SkipReason: Error {
@@ -13,6 +12,7 @@ public enum LaunchConfigTranslator {
     struct Candidate {
         var definition: ServiceDefinition
         var hadReload: Bool
+        var ecosystem: Ecosystem
     }
 
     struct MergeKey: Hashable {
@@ -25,16 +25,21 @@ public enum LaunchConfigTranslator {
     public static func translate(_ configs: [LaunchConfig], repo: URL) -> TranslationResult {
         var candidates: [Candidate] = []
         var skipped: [SkippedConfig] = []
+        var warnings: [String] = []
         for config in configs {
             switch candidate(from: config, repo: repo) {
             case .success(let candidate):
                 candidates.append(candidate)
+                if let task = config.preLaunchTask {
+                    warnings.append("\(config.name): preLaunchTask '\(task)' çalıştırılmıyor")
+                }
             case .failure(let reason):
                 skipped.append(SkippedConfig(name: config.name, reason: reason.message))
             }
         }
         var taken = Set<String>()
-        let services = merge(candidates).map { candidate -> DiscoveredService in
+        let merged = merge(candidates)
+        let services = merged.map { candidate -> DiscoveredService in
             let slug = Slug.unique(Slug.make(candidate.definition.name), taken: taken)
             taken.insert(slug)
             return DiscoveredService(
@@ -43,17 +48,23 @@ public enum LaunchConfigTranslator {
                 definition: candidate.definition
             )
         }
-        return TranslationResult(services: services, skipped: skipped)
+        return TranslationResult(
+            services: services,
+            skipped: skipped,
+            warnings: warnings,
+            ecosystems: Set(merged.map(\.ecosystem))
+        )
     }
 
     static func candidate(from config: LaunchConfig, repo: URL) -> Result<Candidate, SkipReason> {
         guard config.request == "launch" else {
             return .failure(SkipReason("request 'launch' değil"))
         }
-        guard let type = config.type, supportedTypes.contains(type) else {
+        guard let type = config.type, let ecosystem = Ecosystem.forLaunchType(type), ecosystem != .node, ecosystem != .rust,
+              ecosystem != .java, ecosystem != .dotnet else {
             return .failure(SkipReason("desteklenmeyen tür: \(config.type ?? "-")"))
         }
-        if config.module == "pytest" || config.purpose.contains("debug-test") {
+        if config.module == "pytest" || config.purpose.contains("debug-test") || config.mode == "test" {
             return .failure(SkipReason("test konfigürasyonu"))
         }
         if config.variables.contains(where: { $0.hasPrefix("file") }) {
@@ -63,10 +74,53 @@ public enum LaunchConfigTranslator {
             return .failure(SkipReason("desteklenmeyen değişken: ${\(other)}"))
         }
 
-        let root = repo.path
-        func substitute(_ text: String) -> String {
-            text.replacingOccurrences(of: "${workspaceFolder}", with: root)
+        switch ecosystem {
+        case .go: return goCandidate(from: config, repo: repo)
+        default: return pythonCandidate(from: config, repo: repo)
         }
+    }
+
+    static func substitute(_ text: String, repo: URL) -> String {
+        text.replacingOccurrences(of: "${workspaceFolder}", with: repo.path)
+    }
+
+    static func goCandidate(from config: LaunchConfig, repo: URL) -> Result<Candidate, SkipReason> {
+        func substitute(_ text: String) -> String { Self.substitute(text, repo: repo) }
+        guard let program = config.program.map(substitute) else {
+            return .failure(SkipReason("program tanımlı değil"))
+        }
+        let cwd = config.cwd.map(substitute) ?? repo.path
+        let args = config.args.map(substitute)
+        let command: [String]
+        if config.mode == "exec" {
+            command = [program] + args
+        } else {
+            command = ["go", "run"] + config.buildFlags.map(substitute) + [goPackagePath(program, cwd: cwd)] + args
+        }
+        let env = config.env.mapValues(substitute)
+        let definition = ServiceDefinition(
+            name: config.name,
+            command: command,
+            cwd: cwd,
+            envFile: config.envFile.map(substitute) ?? repo.appendingPathComponent(".env").path,
+            env: env,
+            portHint: portHint(args: args, env: env)
+        )
+        return .success(Candidate(definition: definition, hadReload: false, ecosystem: .go))
+    }
+
+    /// `go run` target for `program`: "." or "./sub" when inside `cwd`, otherwise the path unchanged.
+    static func goPackagePath(_ program: String, cwd: String) -> String {
+        let trimmed = program.count > 1 && program.hasSuffix("/") ? String(program.dropLast()) : program
+        guard trimmed.hasPrefix("/") else { return trimmed }
+        if trimmed == cwd { return "." }
+        if trimmed.hasPrefix(cwd + "/") { return "./" + trimmed.dropFirst(cwd.count + 1) }
+        return trimmed
+    }
+
+    static func pythonCandidate(from config: LaunchConfig, repo: URL) -> Result<Candidate, SkipReason> {
+        let root = repo.path
+        func substitute(_ text: String) -> String { Self.substitute(text, repo: repo) }
 
         let python = config.python.map(substitute) ?? repo.appendingPathComponent(".venv/bin/python").path
         let base: [String]
@@ -101,7 +155,7 @@ public enum LaunchConfigTranslator {
             reloadArgs: reloadArgs,
             portHint: portHint(args: args, env: env)
         )
-        return .success(Candidate(definition: definition, hadReload: hadReload))
+        return .success(Candidate(definition: definition, hadReload: hadReload, ecosystem: .python))
     }
 
     static func splitReloadArgs(_ args: [String]) -> (args: [String], extras: [String], hadReload: Bool) {
@@ -131,8 +185,10 @@ public enum LaunchConfigTranslator {
 
     static func portHint(args: [String], env: [String: String]) -> Int? {
         for (i, arg) in args.enumerated() {
-            if arg == "--port", i + 1 < args.count, let port = Int(args[i + 1]) { return port }
-            if arg.hasPrefix("--port="), let port = Int(arg.dropFirst("--port=".count)) { return port }
+            for flag in ["--port", "-port"] {
+                if arg == flag, i + 1 < args.count, let port = Int(args[i + 1]) { return port }
+                if arg.hasPrefix(flag + "="), let port = Int(arg.dropFirst(flag.count + 1)) { return port }
+            }
         }
         return env["PORT"].flatMap { Int($0) }
     }

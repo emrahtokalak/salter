@@ -111,4 +111,52 @@ import Testing
         #expect(split.extras == ["--reload-dir", "src", "--reload-include=*.yaml"])
         #expect(split.hadReload)
     }
+
+    func translateJSON(_ json: String, repo: String = "/w/x") throws -> TranslationResult {
+        LaunchConfigTranslator.translate(try LaunchJsonParser.parse(Data(json.utf8)), repo: URL(fileURLWithPath: repo))
+    }
+
+    @Test func intentClassifierGoRunAndDebugMerge() throws {
+        let r = try translate("classifier-go")
+        #expect(r.services.count == 1)
+        let s = try #require(r.services.first)
+        #expect(s.id == "classifier-go/run")
+        #expect(s.source == .launchJson("Run"))
+        #expect(s.definition.command == ["go", "run", "./cmd/classifier"])
+        #expect(s.definition.cwd == "/w/classifier-go")
+        #expect(s.definition.envFile == "/w/classifier-go/.env")
+        #expect(!s.definition.supportsReload)
+        #expect(r.skipped.map(\.name) == ["Debug Tests (current package)"])
+        #expect(r.ecosystems == [.go])
+        #expect(r.warnings.isEmpty)
+    }
+
+    @Test func goExecModeBuildFlagsAndPreLaunchTask() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "Bin", "type": "go", "request": "launch", "mode": "exec",
+            "program": "${workspaceFolder}/bin/api", "args": ["-port", "9000"] },
+          { "name": "A", "type": "go", "request": "launch", "mode": "debug", "buildFlags": "-tags dev",
+            "program": "${workspaceFolder}", "preLaunchTask": "gen" }
+        ] }
+        """)
+        #expect(r.services.map(\.definition.command) == [["/w/x/bin/api", "-port", "9000"], ["go", "run", "-tags", "dev", "."]])
+        #expect(r.services.first?.definition.portHint == 9000)
+        #expect(r.warnings == ["A: preLaunchTask 'gen' çalıştırılmıyor"])
+    }
+
+    @Test func goProgramRelativeToCwdWithSpaces() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "In", "type": "go", "request": "launch", "cwd": "${workspaceFolder}/svc",
+            "program": "${workspaceFolder}/svc/cmd/a" },
+          { "name": "Out", "type": "go", "request": "launch", "cwd": "${workspaceFolder}/svc",
+            "program": "${workspaceFolder}/tools/gen" },
+          { "name": "NoProgram", "type": "go", "request": "launch" }
+        ] }
+        """, repo: "/w/my repo")
+        #expect(r.services.map(\.definition.command) == [["go", "run", "./cmd/a"], ["go", "run", "/w/my repo/tools/gen"]])
+        #expect(r.services.first?.definition.cwd == "/w/my repo/svc")
+        #expect(r.skipped == [SkippedConfig(name: "NoProgram", reason: "program tanımlı değil")])
+    }
 }

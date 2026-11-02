@@ -159,9 +159,19 @@ public struct SkippedConfig: Equatable, Sendable {
 public struct TranslationResult: Equatable, Sendable {
     public var services: [DiscoveredService]
     public var skipped: [SkippedConfig]
+    public var warnings: [String]
+    /// Ecosystems that produced at least one service.
+    public var ecosystems: Set<Ecosystem>
 
-    public init(services: [DiscoveredService], skipped: [SkippedConfig]) {
+    public init(
+        services: [DiscoveredService],
+        skipped: [SkippedConfig],
+        warnings: [String] = [],
+        ecosystems: Set<Ecosystem> = []
+    ) {
         self.services = services
         self.skipped = skipped
+        self.warnings = warnings
+        self.ecosystems = ecosystems
     }
 }
