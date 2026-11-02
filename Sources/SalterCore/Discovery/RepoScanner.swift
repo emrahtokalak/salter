@@ -33,7 +33,7 @@ public enum RepoScanner {
     }
 
     /// Manifest detectors, run for ecosystems launch.json produced no service for.
-    static let detectors: [any ManifestDetector.Type] = [GoDetector.self, RustDetector.self]
+    static let detectors: [any ManifestDetector.Type] = [GoDetector.self, RustDetector.self, JavaDetector.self]
 
     public static func discover(repo: URL) -> RepoDiscovery {
         var services: [DiscoveredService] = []
