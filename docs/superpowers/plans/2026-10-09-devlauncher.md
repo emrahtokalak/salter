@@ -133,7 +133,7 @@ build:
 	swift build
 
 test:
-	swift test $(TEST_FLAGS) $(if $(FILTER),--filter $(FILTER),)
+	swift test $(TEST_FLAGS) $(if $(FILTER),--filter '$(FILTER)',)
 
 app:
 	swift build -c release
@@ -175,6 +175,9 @@ Keşif/çeviri testleri bu dosyalara karşı çalışır.
 // File: Tests/DevLauncherCoreTests/Support/TestSupport.swift
 import Foundation
 @testable import DevLauncherCore
+
+/// Swift Testing also declares `ExitStatus`; prefer ours inside the test module.
+typealias ExitStatus = DevLauncherCore.ExitStatus
 
 enum Fixtures {
     static let root = URL(fileURLWithPath: #filePath)
@@ -910,9 +913,9 @@ import Testing
 
     @Test func mediaPipelineKeepsAllWorkers() throws {
         let r = try translate("media-pipeline")
-        #expect(r.services.count == 10)
+        #expect(r.services.count == 11)
         #expect(r.skipped.isEmpty)
-        #expect(Set(r.services.map(\.id)).count == 10)
+        #expect(Set(r.services.map(\.id)).count == 11)
         let transcode = try #require(r.services.first { $0.definition.name == "Temporal: Process Transcode Worker" })
         #expect(transcode.definition.command == ["/w/media-pipeline/.venv/bin/python", "-m", "workflows.process_transcode.launcher"])
         #expect(transcode.definition.env["TEMPORAL_TASK_QUEUE"] == "process-transcode-task-queue")
@@ -2340,8 +2343,8 @@ final class OutputCollector: @unchecked Sendable {
 
     @Test func terminateGroupKillsChildren() async throws {
         let c = OutputCollector()
-        let process = try spawn(sh("sleep 100 & sleep 100 & wait"), into: c)
-        try await Task.sleep(nanoseconds: 300_000_000)
+        let process = try spawn(sh("sleep 100 & sleep 100 & echo ready; wait"), into: c)
+        #expect(await waitUntil { c.lines.contains { $0.1 == "ready" } })
         #expect(ProcessInspector.isGroupAlive(process.pgid))
         let killed = await ProcessRunner.terminateGroup(process.pgid, grace: 3)
         #expect(!killed)
@@ -2351,8 +2354,8 @@ final class OutputCollector: @unchecked Sendable {
 
     @Test func escalatesToSigkill() async throws {
         let c = OutputCollector()
-        let process = try spawn(sh("trap '' TERM; sleep 100 & wait"), into: c)
-        try await Task.sleep(nanoseconds: 300_000_000)
+        let process = try spawn(sh("trap '' TERM; sleep 100 & echo ready; wait"), into: c)
+        #expect(await waitUntil { c.lines.contains { $0.1 == "ready" } })
         let killed = await ProcessRunner.terminateGroup(process.pgid, grace: 0.5)
         #expect(killed)
         #expect(await waitUntil { !ProcessInspector.isGroupAlive(process.pgid) })
@@ -3717,9 +3720,9 @@ public final class ServiceSupervisor {
     @ObservationIgnored private var expectsPort = false
     @ObservationIgnored private var generation = 0
 
-    public init(id: String, logs: LogBuffer = LogBuffer(), fileLog: LogFileWriter? = nil, now: @escaping () -> Date = { Date() }) {
+    public init(id: String, logs: LogBuffer? = nil, fileLog: LogFileWriter? = nil, now: @escaping () -> Date = { Date() }) {
         self.id = id
-        self.logs = logs
+        self.logs = logs ?? LogBuffer()
         self.fileLog = fileLog
         self.now = now
     }

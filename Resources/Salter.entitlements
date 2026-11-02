@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+    Şalter only launches child processes (uvicorn, vite, temporal worker, ...)
+    in the user's own session. It does not need any hardened-runtime exception:
+    no JIT, no unsigned library loading, no network server that must be
+    reached by other processes. Keep this empty unless a real need appears.
+    -->
+</dict>
+</plist>

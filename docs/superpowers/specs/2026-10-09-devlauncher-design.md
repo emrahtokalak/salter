@@ -2,7 +2,8 @@
 
 - **Tarih:** 2026-10-09
 - **Durum:** Onaylandı (tasarım), spec incelemesi bekliyor
-- **Konum:** `~/Projects/devlauncher`
+- **Konum:** `~/Projects/salter`
+- **Not (2026-10-10):** Uygulama **Şalter** olarak yeniden adlandırıldı; teknik ad `salter` (modüller `Salter`/`SalterCore`, bundle id `com.etokalak.salter`, `~/Library/Application Support/Salter`). Bu dokümandaki "DevLauncher" geçmiş adıdır.
 
 ## 1. Amaç
 

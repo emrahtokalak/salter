@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug BFF",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "module": "uvicorn",
+      "args": [
+        "adapters.incoming.bff.app:app",
+        "--host", "0.0.0.0",
+        "--port", "8080",
+        // Restart the process when a file is saved or the branch changes,
+        // so requests never hit a stale BFF running old code.
+        "--reload",
+        "--reload-dir", "${workspaceFolder}/src"
+      ],
+      "cwd": "${workspaceFolder}/src",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "CONFIGURATION_FILE_PATH": "${workspaceFolder}/configuration/app-config.yaml",
+        "SECRETS_FILE_PATH": "${workspaceFolder}/configuration/app-secrets.yaml"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // Starts the background workers in a single process. Prerequisites:
+      //   uv sync --group core --group order-worker
+      //   a Temporal server reachable through the configured connection
+      "name": "Debug Order Worker",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "program": "${workspaceFolder}/src/main.py",
+      "args": ["--adapter", "order-worker"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "CONFIGURATION_FILE_PATH": "${workspaceFolder}/configuration/app-config.yaml",
+        "SECRETS_FILE_PATH": "${workspaceFolder}/configuration/app-secrets.yaml",
+        // Disables the workflow sandbox so breakpoints hold.
+        "TEMPORAL_DEBUG": "true"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ],
+  "compounds": [
+    {
+      // The BFF enqueues jobs and the worker runs them: start both with one F5.
+      "name": "Debug BFF + Order Worker",
+      "configurations": ["Debug BFF", "Debug Order Worker"],
+      // Stopping one stops the other, so no orphan worker keeps listening.
+      "stopAll": true
+    }
+  ]
+}
