@@ -7,7 +7,13 @@ public enum PackageManager: String, Codable, CaseIterable, Sendable {
 /// Where a service definition came from; used to match services across rescans.
 public struct ServiceSource: Codable, Equatable, Hashable, Sendable {
     public enum Kind: String, Codable, Sendable {
-        case launchJson, packageJson, manual
+        case launchJson, packageJson, manifest, manual
+
+        /// Unknown kinds (written by a newer Şalter) decode as `.manual` instead of failing the whole config.
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = Kind(rawValue: raw) ?? .manual
+        }
     }
 
     public var kind: Kind
@@ -25,6 +31,11 @@ public struct ServiceSource: Codable, Equatable, Hashable, Sendable {
 
     public static func packageJson(_ script: String) -> ServiceSource {
         ServiceSource(kind: .packageJson, name: script)
+    }
+
+    /// Detected from a project manifest; `target` is "<ecosystem>:<relative target>", e.g. "go:cmd/api".
+    public static func manifest(_ target: String) -> ServiceSource {
+        ServiceSource(kind: .manifest, name: target)
     }
 
     public static let manual = ServiceSource(kind: .manual)
