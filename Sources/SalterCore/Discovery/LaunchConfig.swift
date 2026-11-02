@@ -13,6 +13,14 @@ public struct LaunchConfig: Equatable, Sendable {
     public var env: [String: String]
     public var envFile: String?
     public var purpose: [String]
+    /// Go: "debug", "auto", "exec", "test", ...
+    public var mode: String?
+    public var buildFlags: [String]
+    public var runtimeExecutable: String?
+    public var runtimeArgs: [String]
+    /// CodeLLDB `cargo.args`; nil when the configuration has no `cargo` block.
+    public var cargoArgs: [String]?
+    public var preLaunchTask: String?
     /// Names of every `${...}` variable referenced anywhere in the configuration.
     public var variables: Set<String>
 }
@@ -38,6 +46,12 @@ public enum LaunchJsonParser {
             env: stringMap(dict["env"]),
             envFile: dict["envFile"] as? String,
             purpose: stringList(dict["purpose"]),
+            mode: dict["mode"] as? String,
+            buildFlags: stringList(dict["buildFlags"]),
+            runtimeExecutable: dict["runtimeExecutable"] as? String,
+            runtimeArgs: stringList(dict["runtimeArgs"]),
+            cargoArgs: (dict["cargo"] as? [String: Any]).map { stringList($0["args"]) },
+            preLaunchTask: dict["preLaunchTask"] as? String,
             variables: variables(in: dict)
         )
     }

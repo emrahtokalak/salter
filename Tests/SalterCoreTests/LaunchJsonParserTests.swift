@@ -31,4 +31,23 @@ import Testing
     @Test func missingConfigurationsYieldsEmptyList() throws {
         #expect(try LaunchJsonParser.parse(Data("{}".utf8)).isEmpty)
     }
+
+    @Test func parsesGoNodeAndCargoFields() throws {
+        let json = """
+        { "configurations": [
+          { "name": "g", "type": "go", "mode": "debug", "buildFlags": "-tags dev", "preLaunchTask": "gen" },
+          { "name": "n", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"] },
+          { "name": "r", "cargo": { "args": ["build", "--bin=srv"] } }
+        ] }
+        """
+        let c = try LaunchJsonParser.parse(Data(json.utf8))
+        #expect(c[0].mode == "debug")
+        #expect(c[0].buildFlags == ["-tags", "dev"])
+        #expect(c[0].preLaunchTask == "gen")
+        #expect(c[0].cargoArgs == nil)
+        #expect(c[1].runtimeExecutable == "npm")
+        #expect(c[1].runtimeArgs == ["run", "dev"])
+        #expect(c[1].buildFlags.isEmpty)
+        #expect(c[2].cargoArgs == ["build", "--bin=srv"])
+    }
 }
