@@ -74,6 +74,15 @@ Taslaktaki token'lar (koyu tema):
    ("storefront · 2"). Örnekler: "🚀 Debug FastAPI" → "FastAPI", "Debug BFF" → "BFF",
    "API: uvicorn (debug)" → "API: uvicorn", "Run" → "" (tek servisse zaten repo adı).
 5. Aynı repoda temizlenmiş ekler çakışırsa sıra numarası eklenir ("FastAPI", "FastAPI 2").
+6. Farklı repolardaki iki servisin tam görüntü adı aynı çıkarsa (aynı klasör adlı iki repo,
+   ya da başka bir servisle aynı takma ad), her birine üst klasör adı eklenir:
+   `"api (acme)"` / `"api (personal)"`. Bu yüzden fonksiyon tüm `AppConfig`'i görür.
+7. Manuel servisler (`source.kind == .manual`): kullanıcının yazdığı ad (`discovered.name`)
+   takma ad gibi aynen kullanılır, temizlenmez.
+
+Fonksiyon bağlama göre üç değer verir: **tam ad** (Sabitlenenler, menü çubuğu, detay başlığı,
+öneri sayfaları), **grup içi ad** (Repolar altında servis satırı: ek ya da takma ad) ve
+**grup başlığı** (repo adı).
 
 **Takma ad:** kenar çubuğunda sağ tık → "Yeniden adlandır" (satır içi düzenleme ya da küçük
 popover; builder seçer) ve Ayarlar sekmesindeki "Ad" alanı. Boş bırakmak takma adı kaldırır.
@@ -87,8 +96,10 @@ verdiği bir ad varsa takma ad sayılır — doğru davranış.)
 ### Kenar çubuğu
 - "Sabitlenenler" bölümü: düz liste, satır = durum noktası + görüntü adı + port (varsa,
   üçüncül renk, `:8080`).
-- "Repolar" bölümü: repo başına açılır/kapanır grup; grup satırında repo adı (ikincil renk),
-  altında servis satırları (ek adlarıyla). Mevcut repo bağlam menüsü (keşfedilen servisler,
+- "Repolar" bölümü: birden çok servisli repo açılır/kapanır grup olur; grup satırında repo
+  adı (ikincil renk), altında servis satırları (grup içi adlarıyla). **Tek servisli repo grup
+  değil, düz bir servis satırıdır** (repo adıyla). Sabitlenmiş servisler bugünkü gibi yalnızca
+  "Sabitlenenler"de görünür, Repolar altında tekrar edilmez (seçim kimlikleri tekil kalır). Mevcut repo bağlam menüsü (keşfedilen servisler,
   manuel servis, Finder'da göster, repoyu kaldır) korunur; bölüm başlığında "+" (repo ekle).
 - Satırlarda oynat/durdur düğmesi kalıcı olarak gösterilmez; hover'da görünebilir (builder),
   sağ tık menüsü korunur.
@@ -134,6 +145,13 @@ verdiği bir ad varsa takma ad sayılır — doğru davranış.)
   takdirine; en azından mesajla aynı değere sahip alanlar tekrar edilmez.
 - Saat: JSON'da zaman alanı varsa o (yerel saate çevrilmiş), yoksa satırın alındığı zaman
   (`LogLine.date`).
+- **Düz metin satırları da** saat ve seviye sütunu alır: saat = alındığı zaman; seviye basit
+  kalıplarla tanınır — baştaki `INFO:` (uvicorn), `[INFO]`, logfmt `level=info`, satırın ilk
+  ~60 karakterinde tek başına geçen `INFO`/`WARN`/`WARNING`/`ERROR`/`DEBUG`/`TRACE`
+  (Spring Boot). Tanınmazsa seviye boş, metin aynen (ANSI korunur). Logfmt satırları
+  (`time=… level=… msg=…`, Go slog metin çıktısı) JSON gibi ele alınır: `msg` mesaj, `time`
+  saat, kalanlar `key=value`. Diğer düz metin satırlarında satırın kendi zaman damgası
+  silinmez.
 - Sistem satırları ("başlatılıyor", "durduruldu") ortada, üçüncül renkte ince ayraç gibi.
 - Arama ham metin üzerinde çalışır; log dosyası ham kalır (dosya biçimi değişmez).
 - Mevcut ANSI renk işleme korunur (JSON olmayan satırlar).
@@ -176,3 +194,6 @@ SwiftUI bileşen yapısı, açık tema renkleri, hover davranışları, grafik �
 - JSON log biçimlendirmesi ve alan adı listeleri.
 - Kaynak kartlarında süreç grubu toplamı ve 2 sn / 5 dk değerleri.
 - Menü çubuğunda log ikonunun kaldırılıp satıra tıklamanın pencereyi açması.
+- Düz metin loglarda seviye tanıma kalıpları ve logfmt'nin JSON gibi ayrıştırılması.
+- Sabitlenmiş servislerin Repolar altında tekrar edilmemesi; tek servisli reponun düz satır olması.
+- Repolar arası ad çakışmasında üst klasör adının eklenmesi; manuel servis adının takma ad sayılması.
