@@ -60,11 +60,15 @@ public enum LaunchConfigTranslator {
         guard config.request == "launch" else {
             return .failure(SkipReason("request 'launch' değil"))
         }
-        guard let type = config.type, let ecosystem = Ecosystem.forLaunchType(type), ecosystem != .node, ecosystem != .rust,
-              ecosystem != .java, ecosystem != .dotnet else {
+        guard let type = config.type, let ecosystem = Ecosystem.forLaunchType(type) else {
             return .failure(SkipReason("desteklenmeyen tür: \(config.type ?? "-")"))
         }
-        if config.module == "pytest" || config.purpose.contains("debug-test") || config.mode == "test" {
+        // Java needs the extension's classpath; coreclr runs a prebuilt dll. Their manifests are used instead.
+        if ecosystem == .java || ecosystem == .dotnet {
+            return .failure(SkipReason("proje dosyasından çalıştırılıyor"))
+        }
+        if config.module == "pytest" || config.purpose.contains("debug-test") || config.mode == "test"
+            || config.cargoArgs?.contains("test") == true {
             return .failure(SkipReason("test konfigürasyonu"))
         }
         if config.variables.contains(where: { $0.hasPrefix("file") }) {
@@ -76,7 +80,9 @@ public enum LaunchConfigTranslator {
 
         switch ecosystem {
         case .go: return goCandidate(from: config, repo: repo)
-        default: return pythonCandidate(from: config, repo: repo)
+        case .node: return nodeCandidate(from: config, repo: repo)
+        case .rust: return rustCandidate(from: config, repo: repo)
+        case .python, .java, .dotnet: return pythonCandidate(from: config, repo: repo)
         }
     }
 
@@ -97,16 +103,48 @@ public enum LaunchConfigTranslator {
         } else {
             command = ["go", "run"] + config.buildFlags.map(substitute) + [goPackagePath(program, cwd: cwd)] + args
         }
-        let env = config.env.mapValues(substitute)
+        return .success(simpleCandidate(config, repo: repo, command: command, args: args, ecosystem: .go))
+    }
+
+    static func nodeCandidate(from config: LaunchConfig, repo: URL) -> Result<Candidate, SkipReason> {
+        func substitute(_ text: String) -> String { Self.substitute(text, repo: repo) }
+        let program = config.program.map(substitute)
+        let runtime = config.runtimeExecutable.map(substitute)
+        if runtime == nil {
+            guard let program else { return .failure(SkipReason("program tanımlı değil")) }
+            if program.hasSuffix(".ts") || program.hasSuffix(".mts") || program.hasSuffix(".tsx") {
+                return .failure(SkipReason("TypeScript programı için runtimeExecutable gerekli"))
+            }
+        }
+        let args = config.args.map(substitute)
+        let command = [runtime ?? "node"] + config.runtimeArgs.map(substitute) + (program.map { [$0] } ?? []) + args
+        return .success(simpleCandidate(config, repo: repo, command: command, args: args, ecosystem: .node))
+    }
+
+    static func rustCandidate(from config: LaunchConfig, repo: URL) -> Result<Candidate, SkipReason> {
+        guard let cargoArgs = config.cargoArgs else {
+            return .failure(SkipReason("cargo bloğu yok; Cargo.toml kullanılıyor"))
+        }
+        let args = config.args.map { substitute($0, repo: repo) }
+        let flags = cargoArgs.filter { $0 != "build" && $0 != "run" }.map { substitute($0, repo: repo) }
+        let command = ["cargo", "run"] + flags + (args.isEmpty ? [] : ["--"] + args)
+        return .success(simpleCandidate(config, repo: repo, command: command, args: args, ecosystem: .rust))
+    }
+
+    /// A non-reloading service with the shared cwd/env/envFile rules.
+    static func simpleCandidate(
+        _ config: LaunchConfig, repo: URL, command: [String], args: [String], ecosystem: Ecosystem
+    ) -> Candidate {
+        let env = config.env.mapValues { substitute($0, repo: repo) }
         let definition = ServiceDefinition(
             name: config.name,
             command: command,
-            cwd: cwd,
-            envFile: config.envFile.map(substitute) ?? repo.appendingPathComponent(".env").path,
+            cwd: config.cwd.map { substitute($0, repo: repo) } ?? repo.path,
+            envFile: config.envFile.map { substitute($0, repo: repo) } ?? repo.appendingPathComponent(".env").path,
             env: env,
             portHint: portHint(args: args, env: env)
         )
-        return .success(Candidate(definition: definition, hadReload: false, ecosystem: .go))
+        return Candidate(definition: definition, hadReload: false, ecosystem: ecosystem)
     }
 
     /// `go run` target for `program`: "." or "./sub" when inside `cwd`, otherwise the path unchanged.
