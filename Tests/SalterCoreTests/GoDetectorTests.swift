@@ -68,4 +68,19 @@ func makeRepo(_ name: String, _ files: [String: String]) throws -> URL {
         #expect(GoDetector.packageClause("package   api\n") == "api")
         #expect(GoDetector.packageClause("") == nil)
     }
+
+    @Test func crlfSourcesAreDetected() throws {
+        let repo = try makeRepo("win", ["go.mod": "module win\r\n", "cmd/api/main.go": "// api\r\npackage main\r\n"])
+        #expect(GoDetector.detect(repo: repo).services.map(\.definition.command) == [["go", "run", "./cmd/api"]])
+    }
+
+    @Test func buildIgnoreGeneratorIsNotAMainPackage() throws {
+        let repo = try makeRepo("lib", [
+            "go.mod": "module lib\n",
+            "lib.go": "package lib\n",
+            "gen.go": "//go:build ignore\n\npackage main\n",
+            "cmd/tool/gen.go": "// +build ignore\n\npackage main\n",
+        ])
+        #expect(GoDetector.detect(repo: repo).services.isEmpty)
+    }
 }

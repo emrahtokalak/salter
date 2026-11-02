@@ -31,7 +31,7 @@ public struct MiniTOML: Equatable, Sendable {
             }
         }
 
-        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
+        for rawLine in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
             let line = stripComment(String(rawLine)).trimmingCharacters(in: .whitespaces)
             if let open = pending {
                 let joined = open.value + " " + line

@@ -39,4 +39,9 @@ import Testing
         #expect(t.tables["workspace"]?["exclude"] == .strings(["x#y"]))
         #expect(t.tables["workspace"]?["resolver"] == .string("2"))
     }
+
+    @Test func parsesCrlf() {
+        let t = MiniTOML.parse("[package]\r\nname = \"api\"\r\n")
+        #expect(t.tables["package"]?["name"] == .string("api"))
+    }
 }

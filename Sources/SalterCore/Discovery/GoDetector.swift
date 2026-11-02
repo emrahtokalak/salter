@@ -28,14 +28,23 @@ public enum GoDetector: ManifestDetector {
     static func isMainPackage(_ dir: URL) -> Bool {
         ProjectFiles.children(of: dir).contains { file in
             file.pathExtension == "go" && !file.lastPathComponent.hasSuffix("_test.go")
-                && ProjectFiles.read(file).flatMap(packageClause) == "main"
+                && ProjectFiles.read(file).map { !hasIgnoreConstraint($0) && packageClause($0) == "main" } == true
+        }
+    }
+
+    /// Whether the file is excluded from builds (`//go:build ignore`, `// +build ignore`), e.g. a `go:generate` helper.
+    static func hasIgnoreConstraint(_ source: String) -> Bool {
+        source.split(whereSeparator: \.isNewline).contains { raw in
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("//go:build") || line.hasPrefix("// +build") else { return false }
+            return line.split(whereSeparator: { !$0.isLetter && !$0.isNumber && $0 != "_" }).contains("ignore")
         }
     }
 
     /// The package name from a Go source file's `package` clause, skipping comments and build tags.
     static func packageClause(_ source: String) -> String? {
         var inBlock = false
-        for raw in source.split(separator: "\n", omittingEmptySubsequences: false) {
+        for raw in source.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
             var line = raw.trimmingCharacters(in: .whitespaces)
             if inBlock {
                 guard let end = line.range(of: "*/") else { continue }

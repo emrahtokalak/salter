@@ -28,7 +28,7 @@ public enum DotnetDetector: ManifestDetector {
 
     static func isTest(_ project: URL, _ text: String) -> Bool {
         let name = project.deletingPathExtension().lastPathComponent
-        return name.hasSuffix("Tests") || name.hasSuffix("Test")
+        return name.hasSuffix("Tests") || name.hasSuffix(".Test")
             || text.range(of: #"<IsTestProject>\s*true\s*</IsTestProject>"#, options: [.regularExpression, .caseInsensitive]) != nil
             || text.contains("Microsoft.NET.Test.Sdk")
     }

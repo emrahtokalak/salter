@@ -18,12 +18,13 @@ public enum JavaDetector: ManifestDetector {
         }
         for file in ["build.gradle", "build.gradle.kts"] {
             guard let text = ProjectFiles.read(repo.appendingPathComponent(file)) else { continue }
+            // --no-daemon keeps the app JVM in Şalter's process group (ports, stop); a daemon would detach it.
             let runner = wrapper("gradlew", in: repo) ?? "gradle"
             if text.contains("org.springframework.boot") {
-                return found(repo, "bootRun", "java:\(file)", [runner, "bootRun"], springBoot: true)
+                return found(repo, "bootRun", "java:\(file)", [runner, "--no-daemon", "bootRun"], springBoot: true)
             }
             if hasApplicationPlugin(text) {
-                return found(repo, "run", "java:\(file)", [runner, "run"], springBoot: false)
+                return found(repo, "run", "java:\(file)", [runner, "--no-daemon", "run"], springBoot: false)
             }
             return skipped(file, "spring-boot / application")
         }
@@ -56,7 +57,7 @@ public enum JavaDetector: ManifestDetector {
     static func configuredPort(_ repo: URL) -> Int? {
         let resources = repo.appendingPathComponent("src/main/resources")
         if let text = ProjectFiles.read(resources.appendingPathComponent("application.properties")) {
-            for line in text.split(separator: "\n") {
+            for line in text.split(whereSeparator: \.isNewline) {
                 let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
                 if parts.count == 2, parts[0] == "server.port", let port = Int(parts[1]) { return port }
             }
@@ -64,7 +65,7 @@ public enum JavaDetector: ManifestDetector {
         for name in ["application.yml", "application.yaml"] {
             guard let text = ProjectFiles.read(resources.appendingPathComponent(name)) else { continue }
             var inServer = false
-            for line in text.split(separator: "\n") {
+            for line in text.split(whereSeparator: \.isNewline) {
                 let indented = line.first == " " || line.first == "\t"
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if !indented { inServer = trimmed == "server:" ; continue }

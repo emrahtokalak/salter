@@ -38,7 +38,7 @@ import Testing
     @Test func gradleKtsApplication() throws {
         let repo = try makeRepo("app", ["build.gradle.kts": "plugins {\n    kotlin(\"jvm\") version \"2.0.0\"\n    application\n}\n"])
         let s = try #require(JavaDetector.detect(repo: repo).services.first)
-        #expect(s.definition.command == ["gradle", "run"])
+        #expect(s.definition.command == ["gradle", "--no-daemon", "run"])
         #expect(s.definition.name == "run")
         #expect(s.source == .manifest("java:build.gradle.kts"))
     }
@@ -49,7 +49,7 @@ import Testing
             "src/main/resources/application.yml": "spring:\n  application:\n    name: web\nserver:\n  port: 9090\n",
         ])
         let s = try #require(JavaDetector.detect(repo: repo).services.first)
-        #expect(s.definition.command == [repo.appendingPathComponent("gradlew").path, "bootRun"])
+        #expect(s.definition.command == [repo.appendingPathComponent("gradlew").path, "--no-daemon", "bootRun"])
         #expect(s.definition.portHint == 9090)
     }
 
@@ -63,5 +63,10 @@ import Testing
     @Test func springBootDefaultsTo8080() throws {
         let repo = try makeRepo("svc", ["pom.xml": springPom])
         #expect(JavaDetector.detect(repo: repo).services.first?.definition.portHint == 8080)
+    }
+
+    @Test func crlfPropertiesPort() throws {
+        let repo = try makeRepo("svc", ["pom.xml": springPom, "src/main/resources/application.properties": "a=b\r\nserver.port=9001\r\n"])
+        #expect(JavaDetector.detect(repo: repo).services.first?.definition.portHint == 9001)
     }
 }

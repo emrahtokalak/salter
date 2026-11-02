@@ -53,4 +53,9 @@ import Testing
         #expect(r.services.isEmpty)
         #expect(r.ecosystems.isEmpty)
     }
+
+    @Test func nameEndingInTestWithoutDotIsKept() throws {
+        let repo = try makeRepo("net", ["src/SpeedTest/SpeedTest.csproj": #"<Project Sdk="Microsoft.NET.Sdk.Web"></Project>"#])
+        #expect(DotnetDetector.detect(repo: repo).services.map(\.definition.name) == ["SpeedTest"])
+    }
 }
