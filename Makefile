@@ -22,7 +22,7 @@ SIGN_FLAGS := $(if $(filter -,$(SIGN_ID)),,--options runtime --timestamp)
 ENT_FLAG := $(if $(wildcard $(ENTITLEMENTS)),--entitlements '$(ENTITLEMENTS)',)
 SIGN := codesign -s '$(SIGN_ID)' --force $(SIGN_FLAGS) $(ENT_FLAG)
 
-.PHONY: build test run app install notary-setup notarize verify dist icon clean
+.PHONY: build test run app zip install notary-setup notarize verify dist icon clean
 
 build:
 	$(SWIFT) build
@@ -50,6 +50,12 @@ app:
 
 install: app _install-app
 
+# Signed app as a zip for sharing (ditto keeps the signature intact).
+zip: app
+	@rm -f $(ZIP)
+	ditto -c -k --keepParent $(APP) $(ZIP)
+	@echo "→ $(ZIP)"
+
 _install-app:
 	mkdir -p $(HOME)/Applications
 	rm -rf $(HOME)/Applications/Salter.app
@@ -67,6 +73,9 @@ notarize: app
 	@ditto -c -k --keepParent $(APP) $(ZIP)
 	xcrun notarytool submit $(ZIP) --keychain-profile $(NOTARY_PROFILE) --wait
 	xcrun stapler staple $(APP)
+	@# Re-zip so the shared archive contains the stapled ticket.
+	@rm -f $(ZIP)
+	ditto -c -k --keepParent $(APP) $(ZIP)
 	@$(MAKE) --no-print-directory verify
 
 verify:
