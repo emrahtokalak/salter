@@ -17,7 +17,7 @@ struct GitRow: View {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.triangle.branch").font(.system(size: 11))
                         if let status, let branch = status.branch {
-                            Text(branch).lineLimit(1).truncationMode(.middle)
+                            Text(Self.shortened(branch)).lineLimit(1)
                         } else if let commit = status?.commit {
                             Text(commit).font(.system(size: 12, design: .monospaced))
                             Text("ayrık HEAD").foregroundStyle(Theme.text3)
@@ -25,7 +25,7 @@ struct GitRow: View {
                             Text("—")
                         }
                     }
-                    .frame(maxWidth: 260)
+                    .fixedSize()
                 }
                 .buttonStyle(QuietButtonStyle(height: 24))
                 .disabled(tree.busy)
@@ -77,6 +77,13 @@ struct GitRow: View {
         if status.behind > 0 { parts.append("↓\(status.behind)") }
         if status.ahead > 0 { parts.append("↑\(status.ahead)") }
         return parts.joined(separator: " ")
+    }
+
+    /// Long branch names keep their start and end ("feature/abc…monthly-interval").
+    static func shortened(_ name: String, limit: Int = 40) -> String {
+        guard name.count > limit else { return name }
+        let half = (limit - 1) / 2
+        return String(name.prefix(half)) + "…" + String(name.suffix(half))
     }
 
     static func fileList(_ files: [String]) -> String {

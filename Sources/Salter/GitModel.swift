@@ -24,7 +24,8 @@ final class GitModel {
     }
 
     private(set) var trees: [String: Tree] = [:]
-    @ObservationIgnored private var rootForRepo: [String: String] = [:]
+    // Observed: views that looked up a repo before its root was known must update once it is.
+    private var rootForRepo: [String: String] = [:]
     @ObservationIgnored private var lastFetchAttempt: [String: Date] = [:]
     @ObservationIgnored private var fetchTasks: [String: Task<Bool, Never>] = [:]
 
