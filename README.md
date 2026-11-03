@@ -2,6 +2,10 @@
 
 Şalter is a macOS menu-bar and window app that discovers the dev services in your local repos and lets you start, stop and watch them without opening VS Code or a terminal.
 
+![Main window: pinned services, resource cards, git row and parsed logs](docs/images/main-window.png)
+
+<p align="center"><img src="docs/images/menu-bar.png" width="320" alt="Menu bar popover"></p>
+
 - **Discovery:** finds services in `.vscode/launch.json`, `package.json` and project files (Go, Rust, Java, .NET).
 - **Pinned services:** start or stop all of them with one click from the menu bar or the window.
 - **Readable logs:** time and level columns, with JSON and logfmt lines parsed.
@@ -17,7 +21,7 @@ The internal name is `salter` (package, bundle id `com.etokalak.salter`, folders
 
 ## Install from a ready build
 
-1. Unzip `Salter.zip` and move `Salter.app` into `/Applications`.
+1. Download `Salter.zip` from [Releases](https://github.com/emrahtokalak/salter/releases/latest), unzip it and move `Salter.app` into `/Applications`.
 2. If the build is not notarized, macOS blocks it on first launch. Remove the block with:
 
    ```sh
