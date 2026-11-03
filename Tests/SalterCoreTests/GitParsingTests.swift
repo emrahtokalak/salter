@@ -33,6 +33,14 @@ import Testing
         #expect(s.behind == 0)
     }
 
+    @Test func statusUpstreamWithoutABIsGone() {
+        let s = GitStatus.parse(porcelainV2: "# branch.oid abcdef1234567\n# branch.head x\n# branch.upstream origin/x\n")
+        #expect(s.upstream == "origin/x")
+        #expect(s.upstreamGone)
+        let live = GitStatus.parse(porcelainV2: "# branch.head x\n# branch.upstream origin/x\n# branch.ab +0 -0\n")
+        #expect(!live.upstreamGone)
+    }
+
     @Test func statusTrackedVsUntracked() {
         let s = GitStatus.parse(porcelainV2: """
         # branch.head main

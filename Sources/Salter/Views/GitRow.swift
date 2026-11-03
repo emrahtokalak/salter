@@ -55,7 +55,7 @@ struct GitRow: View {
                     }
                 }
                 .buttonStyle(QuietButtonStyle(height: 24))
-                .disabled(tree.busy || status?.upstream == nil || status?.isDetached != false)
+                .disabled(tree.busy || status?.upstream == nil || status?.upstreamGone != false || status?.isDetached != false)
                 .help(status?.upstream.map { "\($0) üzerinden çek (yalnızca ileri sarma)" } ?? "Bu branch'in upstream'i yok")
 
                 if tree.busy || tree.fetching {
@@ -72,6 +72,7 @@ struct GitRow: View {
 
     private func syncText(_ status: GitStatus) -> String {
         guard status.upstream != nil else { return "upstream yok" }
+        if status.upstreamGone { return "uzak branch silinmiş" }
         if status.ahead == 0 && status.behind == 0 { return "güncel" }
         var parts: [String] = []
         if status.behind > 0 { parts.append("↓\(status.behind)") }

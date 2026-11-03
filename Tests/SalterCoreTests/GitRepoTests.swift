@@ -135,6 +135,31 @@ struct TempRemote {
         #expect(await repo.pull() == .failed(.noUpstream))
     }
 
+    @Test func pullWithAutoStashConfigStillRefusesOverlap() async throws {
+        let t = try TempRemote()
+        try t.sh(["config", "merge.autoStash", "true"], in: t.work)
+        try t.pushFromOther(file: "a.txt")
+        try t.write("a.txt", "mine\n", in: t.work)
+        let before = try t.head(t.work)
+        let repo = try await t.repo()
+        #expect(await repo.pull() == .failed(.localChanges(["a.txt"])))
+        #expect(try t.head(t.work) == before)
+        #expect(try t.sh(["stash", "list"], in: t.work).isEmpty)
+    }
+
+    @Test func pullWithDeletedUpstreamReportsNoUpstream() async throws {
+        let t = try TempRemote()
+        try t.pushFromOther(file: "f.txt", branch: "feature/gone")
+        let repo = try await t.repo()
+        _ = await repo.fetch()
+        _ = await repo.switchTo(.remote(RemoteBranch(remote: "origin", name: "feature/gone")))
+        try t.sh(["push", "origin", "--delete", "feature/gone"], in: t.other)
+        _ = await repo.fetch()
+        let status = try #require(await repo.status())
+        #expect(status.upstreamGone)
+        #expect(await repo.pull() == .failed(.noUpstream))
+    }
+
     @Test func switchBlockedByTrackedChange() async throws {
         let t = try TempRemote()
         try t.sh(["branch", "other-branch"], in: t.work)

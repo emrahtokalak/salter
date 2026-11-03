@@ -64,11 +64,14 @@ public struct GitRepo: Equatable, Sendable {
     /// `git pull --ff-only` as a timed fetch plus an untimed local fast-forward, so a timeout
     /// can never interrupt the working-tree update.
     public func pull() async -> GitOutcome {
-        guard let status = await status(), status.upstream != nil else { return .failed(.noUpstream) }
+        guard let status = await status(), status.upstream != nil, !status.upstreamGone else { return .failed(.noUpstream) }
         let old = await git(["rev-parse", "HEAD"]).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         let fetched = await fetch()
         guard fetched.succeeded else { return .failed(Self.failure(fetched)) }
-        let merged = await git(["merge", "--ff-only", "@{u}"])
+        // fetch --prune may just have removed the upstream branch.
+        if await self.status()?.upstreamGone == true { return .failed(.noUpstream) }
+        // --no-autostash: a configured merge.autoStash would re-apply local changes and could leave conflicts.
+        let merged = await git(["merge", "--ff-only", "--no-autostash", "@{u}"])
         guard merged.succeeded else { return .failed(Self.failure(merged)) }
         let count = await git(["rev-list", "--count", "\(old)..HEAD"]).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         let commits = Int(count) ?? 0

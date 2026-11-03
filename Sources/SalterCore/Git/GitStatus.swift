@@ -11,6 +11,8 @@ public struct GitStatus: Equatable, Sendable {
     public var behind = 0
     /// Tracked files with changes (modified, renamed, conflicted); untracked files are not included.
     public var changedFiles: [String] = []
+    /// The upstream is configured but its remote branch no longer exists (e.g. deleted after a PR merge).
+    public var upstreamGone = false
 
     public var isDetached: Bool { branch == nil }
 
@@ -25,6 +27,7 @@ public struct GitStatus: Equatable, Sendable {
 
     public static func parse(porcelainV2 text: String) -> GitStatus {
         var status = GitStatus()
+        var sawAheadBehind = false
         for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
             if line.hasPrefix("# branch.oid ") {
                 let oid = line.dropFirst("# branch.oid ".count)
@@ -35,6 +38,7 @@ public struct GitStatus: Equatable, Sendable {
             } else if line.hasPrefix("# branch.upstream ") {
                 status.upstream = String(line.dropFirst("# branch.upstream ".count))
             } else if line.hasPrefix("# branch.ab ") {
+                sawAheadBehind = true
                 for part in line.dropFirst("# branch.ab ".count).split(separator: " ") {
                     if part.hasPrefix("+") { status.ahead = Int(part.dropFirst()) ?? 0 }
                     if part.hasPrefix("-") { status.behind = Int(part.dropFirst()) ?? 0 }
@@ -43,6 +47,8 @@ public struct GitStatus: Equatable, Sendable {
                 status.changedFiles.append(path)
             }
         }
+        // git prints branch.ab only when the upstream commit exists.
+        status.upstreamGone = status.upstream != nil && !sawAheadBehind
         return status
     }
 
