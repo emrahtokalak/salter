@@ -1,0 +1,19 @@
+README.md
+  s_81bebfa98cbf32::t_025460bcfc6fc0 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a11c9b4ed3a094b99cb01ef52798c68d7238779",
+  "prompts": {},
+  "sessions": {
+    "s_81bebfa98cbf32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34036f3f-af71-4488-91f4-f893059fe480",
+        "model": "unknown"
+      },
+      "human_author": "Emrah Tokalak <emrahtokalak@gmail.com>"
+    }
+  }
+}
