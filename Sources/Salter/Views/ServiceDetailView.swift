@@ -1,3 +1,4 @@
+import AppKit
 import SalterCore
 import SwiftUI
 
@@ -17,6 +18,7 @@ struct ServiceDetailView: View {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     header(service, supervisor)
+                    GitRow(serviceID: id)
                     banners(service, supervisor)
                     ResourceCards(
                         history: model.resources.histories[id],
@@ -35,6 +37,10 @@ struct ServiceDetailView: View {
                 }
             }
             .background(Theme.bg)
+            .task(id: id) { model.gitRefresh(id, fetchMaxAge: 300) }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                model.gitRefresh(id, fetchMaxAge: nil)
+            }
         }
     }
 
@@ -94,7 +100,7 @@ struct ServiceDetailView: View {
             .lineLimit(2)
             .textSelection(.enabled)
             .padding(.top, 8)
-            .padding(.bottom, 14)
+            .padding(.bottom, 10)
     }
 
     @ViewBuilder
