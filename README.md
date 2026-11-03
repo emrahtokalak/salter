@@ -1,72 +1,97 @@
 # Şalter
 
-`~/Projects` altındaki servisleri (FastAPI/uvicorn, Temporal worker'ları, Vite/Next dev
-server'ları) VS Code açmadan başlatıp durduran native macOS menu bar + masaüstü uygulaması.
-Teknik adı `salter` (paket, bundle id, klasörler); görünen adı **Şalter**.
+Şalter is a macOS menu-bar and window app that discovers the dev services in your local repos and lets you start, stop and watch them without opening VS Code or a terminal.
 
-## Kurulum
+- **Discovery:** finds services in `.vscode/launch.json`, `package.json` and project files (Go, Rust, Java, .NET).
+- **Pinned services:** start or stop all of them with one click from the menu bar or the window.
+- **Readable logs:** time and level columns, with JSON and logfmt lines parsed.
+- **Resources:** CPU, memory, process count and uptime per service, with a 5-minute history.
+- **Git:** see the branch, switch to local or remote branches, and pull (fast-forward only).
 
-    make dist           # imzala + notarize + staple + ~/Applications/Salter.app'e kur
-    open ~/Applications/Salter.app
+The internal name is `salter` (package, bundle id `com.etokalak.salter`, folders).
 
-`make dist` için bir kez keychain'e notarization kimliği kaydetmen gerekir:
+## Requirements
 
-    make notary-setup   # Apple ID + Team ID + app-specific password sorar
-    # app-specific password: https://appleid.apple.com/account/manage
+- macOS 14 or later, Apple Silicon (arm64)
+- To build: Command Line Tools (`xcode-select --install`). Xcode is not required.
 
-İmza: anahtar zincirinde "Developer ID Application" sertifikası varsa `make app` / `make run`
-onunla (`--options runtime` + zaman damgası + `Resources/Salter.entitlements`) imzalar, yoksa
-ad-hoc (`-`) imzaya düşer. Elle seçmek için: `make install SIGN_ID=-` veya
-`SIGN_ID="Developer ID Application: …"`. İmzayı/notarization'ı doğrulamak için:
+## Install from a ready build
 
-    make verify         # codesign --verify + spctl (Gatekeeper) kontrolü
+1. Unzip `Salter.zip` and move `Salter.app` into `/Applications`.
+2. If the build is not notarized, macOS blocks it on first launch. Remove the block with:
 
-Notarize edilmemiş Developer ID uygulamaları Gatekeeper tarafından reddedilir
-(`spctl: rejected, source=Unnotarized Developer ID`). `make dist` bu yüzden submit + staple içerir.
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/Salter.app
+   ```
 
-### SDK sürümü (sadece Command Line Tools kuruluysa)
+3. Open the app. Add the folder that holds your projects (default `~/Projects`) with **+ → Taranacak klasör ekle…** in the sidebar.
 
-macOS 27 SDK'da `@State` bir macro oldu ve implementasyonu (`SwiftUIMacros`) yalnızca Xcode ile
-gelir; Command Line Tools ile derleme `plugin for module 'SwiftUIMacros' not found` hatası verir.
-Makefile bu yüzden derlemeyi hâlâ property-wrapper `State` içeren en yeni SDK'ya sabitler:
+## Build from source
 
-    SDKROOT ?= $(firstword $(wildcard /Library/Developer/CommandLineTools/SDKs/MacOSX26*.sdk))
+```sh
+git clone https://github.com/emrahtokalak/salter.git
+cd salter
+make test       # unit and integration tests
+make install    # build, sign, install to ~/Applications/Salter.app
+open ~/Applications/Salter.app
+```
 
-Xcode kuruluysa ya da SDK'yı elle seçmek istersen: `make SDKROOT=/path/to/MacOSX.sdk app`.
+| Command | What it does |
+|---|---|
+| `make build` | Debug build |
+| `make test` | Tests (Swift Testing); `make test FILTER=GitRepoTests` runs one suite |
+| `make app` | Signed release `build/Salter.app` |
+| `make install` | `make app` + copy to `~/Applications` |
+| `make zip` | Signed app as `build/Salter.zip` for sharing |
+| `make dist` | Sign, notarize, staple, install (needs `make notary-setup` once) |
+| `make verify` | Check the signature and Gatekeeper |
+| `make run` | Run the release binary without a bundle (no notifications or launch at login) |
 
-Şirket politikası (ör. BeyondTrust) hâlâ engelliyorsa onay gelene kadar geliştirici modunda
-çalıştır:
+**Signing:** if the keychain has a `Developer ID Application` certificate, it is used automatically; otherwise the app is signed ad-hoc. Override with `make app SIGN_ID=-` or `SIGN_ID="Developer ID Application: …"`.
 
-    make run            # release binary'yi arka planda başlatır; log: ~/Library/Logs/Salter/app.log
+**Notarization:**
+- Without it, Gatekeeper rejects the app (`Unnotarized Developer ID`).
+- Run `make notary-setup` once; it stores your Apple ID, Team ID and an [app-specific password](https://appleid.apple.com/account/manage) in the keychain.
+- After that, `make dist` is enough.
 
-Bu modda macOS bildirimleri ve "Login'de başlat" kullanılamaz.
+**SDK:**
+- With Command Line Tools only, the macOS 27 SDK fails to build because `@State` became a macro (`SwiftUIMacros` ships only with Xcode).
+- The Makefile therefore pins the newest `MacOSX26*.sdk`.
+- To pick another SDK: `make SDKROOT=/path/to/MacOSX.sdk app`.
 
-Geliştirirken:
+## How it works
 
-    make build          # debug derleme
-    make test           # Core testleri (Swift Testing, Xcode gerekmez)
-    make run            # release binary'yi arka planda başlat
+| Source | Becomes |
+|---|---|
+| `launch.json` · `debugpy` / `python` | The `.venv` Python; uvicorn gets a reload switch |
+| `launch.json` · `go` | `go run <program>`, or the binary when `mode: exec` |
+| `launch.json` · `node` / `pwa-node` | `runtimeExecutable` + `runtimeArgs`, or `node <program>` |
+| `launch.json` · `lldb` (CodeLLDB) | `cargo run …` from the `cargo` block |
+| `package.json` | The `dev` / `start` script with npm, yarn or pnpm |
+| `go.mod` | `go run` for each `cmd/<name>` and the root `package main` |
+| `Cargo.toml` | `cargo run [-p] [--bin]` for each binary (workspaces included) |
+| `pom.xml`, `build.gradle(.kts)` | Spring Boot / exec / application; uses `mvnw` / `gradlew` when present |
+| `*.csproj` | `dotnet run --project` (test projects skipped) |
 
-## Nasıl çalışır
+- **Fallbacks:** project files are read only for languages that `launch.json` produced no service for. `java` and `coreclr` launch configs are skipped in favour of the project file.
+- **Environment:** `<repo>/.env` plus the config's `env`, layered the same way as in VS Code.
+- **Processes:** each service runs in its own process group. Stopping sends SIGTERM to the whole group, then SIGKILL after 5 seconds.
+- **Git:** commands never prompt, a fetch times out after 60 seconds, and pull is fast-forward only. Switching branches is refused while there are uncommitted changes.
 
-- Servisler önce `.vscode/launch.json`'dan keşfedilir:
-  - `debugpy`/`python`: `.venv` Python'u ile; uvicorn için reload anahtarı
-  - `go`: `go run <program>` (`mode: exec` ise derlenmiş binary)
-  - `node`/`pwa-node`: `runtimeExecutable` + `runtimeArgs` ya da `node <program>`
-  - `lldb` (CodeLLDB): `cargo` bloğundan `cargo run …`
-  - `java`/`coreclr` atlanır; proje dosyasından çalıştırılır
-- `package.json` `dev`/`start` script'i (aynı komutu çalıştıran launch.json node konfigürasyonu tekrar sayılmaz).
-- Bir dil için launch.json servis üretmediyse proje dosyasına bakılır:
-  - Go: `go.mod` → her `cmd/<ad>` ve kökteki `package main` için `go run`
-  - Rust: `Cargo.toml` (workspace dahil) → her binary için `cargo run [-p] [--bin]`
-  - Java: `pom.xml` (spring-boot / exec eklentisi) ya da `build.gradle(.kts)` (Spring Boot / application); `mvnw`/`gradlew` tercih edilir
-  - .NET: Web/Worker ya da `Exe` tipindeki her `*.csproj` → `dotnet run --project`; test projeleri hariç
-- Yeni servislerde env dosyası `<repo>/.env`. Otomatik yeniden yükleme yalnızca uvicorn'da var; diğerleri elle restart edilir.
-- Python servisleri `<repo>/.venv/bin/python` ile, env katmanları VS Code'daki gibi (`.env` + config `env`) çalışır.
-- Her servis kendi process group'unda başlar; durdurma tüm gruba SIGTERM, 5 sn sonra SIGKILL gönderir.
-- Ayarlar: `~/Library/Application Support/Salter/config.json`
-- Loglar: `~/Library/Logs/Salter/`
+| File | Location |
+|---|---|
+| Settings | `~/Library/Application Support/Salter/config.json` |
+| Logs | `~/Library/Logs/Salter/` |
 
-## Kapsam dışı (v1)
+## Project layout
 
-Debugger attach, docker-compose, Makefile target keşfi, compound/grup başlatma, otomatik yeniden başlatma.
+```
+Sources/SalterCore    Discovery, config, process management, log parsing, git (pure, tested)
+Sources/Salter        SwiftUI app: menu bar, window, views
+Tests/SalterCoreTests Unit and integration tests (Fixtures/: sample launch.json / package.json)
+docs/superpowers      Design and implementation plans
+```
+
+## Out of scope
+
+Attaching a debugger, docker-compose, Makefile target discovery, automatic restart, and commit, push or merge.
