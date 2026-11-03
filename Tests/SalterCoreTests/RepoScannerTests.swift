@@ -83,6 +83,6 @@ import Testing
         let repo = try makeRepo("api", [
             ".vscode/launch.json": #"{ "configurations": [ { "name": "Run", "type": "go", "request": "launch", "program": "${workspaceFolder}", "preLaunchTask": "gen" } ] }"#,
         ])
-        #expect(RepoScanner.discover(repo: repo).warnings == ["Run: preLaunchTask 'gen' çalıştırılmıyor"])
+        #expect(RepoScanner.discover(repo: repo).warnings == ["launch.json yapılandırması: preLaunchTask 'gen' çalıştırılmıyor"])
     }
 }

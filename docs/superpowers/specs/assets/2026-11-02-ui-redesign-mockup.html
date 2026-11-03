@@ -1,0 +1,104 @@
+<style>
+  .w { --bg:#0f1011; --panel:#141517; --line:#23252a; --hover:#1c1d21; --tx:#ededed; --tx2:#8a8f98; --tx3:#62666d; --acc:#5e6ad2; --ok:#4cb782; --err:#eb5757; --warn:#f2c94c;
+       font:13px/1.4 -apple-system,"SF Pro Text",Inter,sans-serif; color:var(--tx); background:var(--bg); border:1px solid var(--line); border-radius:12px; overflow:hidden; display:flex; height:560px; }
+  .w * { box-sizing:border-box; }
+  .sb { width:248px; background:var(--panel); border-right:1px solid var(--line); padding:10px 8px; display:flex; flex-direction:column; gap:2px; }
+  .tl { display:flex; gap:7px; padding:4px 8px 14px; } .tl i { width:11px; height:11px; border-radius:50%; background:#3a3d44; display:block; }
+  .sec { color:var(--tx3); font-size:11px; font-weight:500; padding:12px 8px 4px; display:flex; justify-content:space-between; }
+  .r { display:flex; align-items:center; gap:9px; padding:5px 8px; border-radius:6px; color:var(--tx); }
+  .r.sel { background:#1f2024; } .r .n { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .r .n span { color:var(--tx2); }
+  .r .p { color:var(--tx3); font-size:11.5px; font-variant-numeric:tabular-nums; }
+  .d { width:7px; height:7px; border-radius:50%; background:#3a3d44; flex:none; } .d.on { background:var(--ok); box-shadow:0 0 0 3px rgba(76,183,130,.15);} .d.err{background:var(--err);} .d.st{background:var(--warn);}
+  .g { color:var(--tx2); padding:5px 8px; display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .g .c { color:var(--tx3); font-size:10px; width:10px; } .r.ind { padding-left:26px; }
+  .nb { margin:auto 0 0; border:1px solid var(--line); border-radius:8px; padding:8px 10px; color:var(--tx2); font-size:12px; display:flex; justify-content:space-between; }
+  .nb b { color:var(--tx); font-weight:500; }
+  .main { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .hd { padding:18px 22px 0; border-bottom:1px solid var(--line); }
+  .crumb { color:var(--tx3); font-size:12px; margin-bottom:6px; }
+  .tr { display:flex; align-items:center; gap:10px; }
+  .tr h1 { font-size:17px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  .pill { font-size:11.5px; color:var(--ok); background:rgba(76,183,130,.1); border:1px solid rgba(76,183,130,.25); padding:1px 8px; border-radius:999px; }
+  .port { color:var(--tx2); font-size:12px; border:1px solid var(--line); border-radius:6px; padding:2px 7px; }
+  .sp { flex:1; }
+  .ib { width:28px; height:28px; border:1px solid var(--line); border-radius:6px; display:grid; place-items:center; color:var(--tx2); font-size:13px; }
+  .btn { height:28px; padding:0 12px; border-radius:6px; border:1px solid var(--line); color:var(--tx); display:flex; align-items:center; font-size:12.5px; }
+  .btn.pri { background:var(--acc); border-color:var(--acc); color:white; }
+  .cmd { font:12px ui-monospace,"SF Mono",Menlo,monospace; color:var(--tx2); margin:8px 0 14px; }
+  .tabs { display:flex; gap:18px; } .tabs div { padding:0 0 10px; color:var(--tx2); font-size:12.5px; } .tabs .on { color:var(--tx); box-shadow:inset 0 -2px 0 var(--tx); }
+  .lt { display:flex; align-items:center; gap:10px; padding:8px 22px; border-bottom:1px solid var(--line); color:var(--tx3); font-size:12px; }
+  .srch { flex:1; border:1px solid var(--line); border-radius:6px; padding:4px 9px; color:var(--tx3); max-width:320px; }
+  .lg { flex:1; padding:10px 22px; font:11.5px/1.65 ui-monospace,"SF Mono",Menlo,monospace; color:#c9cbcf; overflow:hidden; }
+  .lg .ts { color:var(--tx3); margin-right:10px; } .lg .sys { color:var(--tx3); }
+  .lg .lv { display:inline-block; width:40px; } .lv.i { color:#6b9bd2; } .lv.w { color:var(--warn); } .lv.e { color:var(--err); }
+  .lg .k { color:var(--tx3); }
+  /* menu bar */
+  .mb { width:320px; background:#16171a; border:1px solid var(--line); border-radius:12px; font:13px/1.4 -apple-system,Inter,sans-serif; color:var(--tx); overflow:hidden; }
+  .mb .h { display:flex; justify-content:space-between; padding:12px 14px 8px; font-weight:600; } .mb .h span { color:var(--tx3); font-weight:400; font-size:12px; }
+  .mb .r { margin:0 6px; } .mb .f { border-top:1px solid var(--line); margin-top:6px; padding:8px 10px; display:flex; gap:6px; justify-content:space-between; color:var(--tx2); font-size:12px; }
+  .mb .f div { padding:3px 8px; border-radius:5px; } .mb .act { color:var(--tx3); font-size:12px; }
+  .stats { display:flex; gap:10px; margin:0 0 14px; }
+  .st { border:1px solid var(--line); border-radius:8px; padding:8px 12px; min-width:150px; }
+  .st .l { color:var(--tx3); font-size:11px; } .st .v { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:2px; display:flex; align-items:end; justify-content:space-between; gap:12px; }
+  .st .v small { color:var(--tx3); font-weight:400; font-size:11px; }
+  .st svg { width:70px; height:20px; }
+</style>
+
+<h2>Taslak v2 — detayda kaynak tüketimi</h2>
+<p class="subtitle">Komutun altında CPU, bellek ve süreç sayısı; son 5 dakikanın küçük grafiğiyle. Değerler servisin tüm süreç grubunun toplamı (go run'ın derlediği binary dahil).</p>
+
+<div class="w" style="--x:0">
+  <div class="sb">
+    <div class="tl"><i></i><i></i><i></i></div>
+    <div class="sec">Sabitlenenler</div>
+    <div class="r sel"><div class="d on"></div><div class="n">classifier-go</div><div class="p">:8080</div></div>
+    <div class="r"><div class="d on"></div><div class="n">storefront <span>· BFF</span></div><div class="p">:8081</div></div>
+    <div class="r"><div class="d"></div><div class="n">storefront-web</div><div class="p">:5173</div></div>
+    <div class="r"><div class="d err"></div><div class="n">docs-api</div><div class="p">:8010</div></div>
+    <div class="sec"><span>Repolar</span><span>+</span></div>
+    <div class="g"><span class="c">▾</span>storefront</div>
+    <div class="r ind"><div class="d on"></div><div class="n">BFF</div></div>
+    <div class="r ind"><div class="d"></div><div class="n">Order Worker</div></div>
+    <div class="g"><span class="c">▸</span>flow-api</div>
+    <div class="g"><span class="c">▸</span>flow-operator</div>
+    <div class="g"><span class="c">▸</span>classifier-go</div>
+    <div class="nb"><span><b>27</b> yeni repo bulundu</span><span>İncele →</span></div>
+  </div>
+  <div class="main">
+    <div class="hd">
+      <div class="crumb">acme / classifier-go</div>
+      <div class="tr">
+        <h1>classifier-go</h1><span class="pill">Çalışıyor · 4 dk</span><span class="port">localhost:8080 ↗</span>
+        <div class="sp"></div>
+        <div class="ib">⌖</div><div class="btn">Yeniden başlat</div><div class="btn">Durdur</div>
+      </div>
+      <div class="cmd">go run ./cmd/classifier</div>
+      <div class="stats">
+        <div class="st"><div class="l">CPU</div><div class="v">3,2%<svg viewBox="0 0 70 20"><polyline fill="none" stroke="#5e6ad2" stroke-width="1.5" points="0,18 8,17 16,15 24,16 32,12 40,14 48,9 56,13 64,11 70,12"/></svg></div></div>
+        <div class="st"><div class="l">Bellek</div><div class="v">142 MB<svg viewBox="0 0 70 20"><polyline fill="none" stroke="#4cb782" stroke-width="1.5" points="0,14 8,13 16,13 24,12 32,12 40,11 48,11 56,10 64,10 70,10"/></svg></div></div>
+        <div class="st"><div class="l">Süreçler</div><div class="v">2 <small>PID 4412</small></div></div>
+        <div class="st"><div class="l">Çalışma süresi</div><div class="v">4 dk 12 sn</div></div>
+      </div>
+      <div class="tabs"><div class="on">Log</div><div>Ayarlar</div></div>
+    </div>
+    <div class="lt"><div class="srch">Logda ara…</div><span>Otomatik kaydır ✓</span><div class="sp"></div><span>9 satır</span><span>Dosya</span><span>Temizle</span></div>
+    <div class="lg">
+      <div class="sys">— başlatıldı · 23:27:36 —</div>
+      <div><span class="ts">23:27:37</span><span class="lv i">INFO</span>cache_initialized <span class="k">method=hybrid</span></div>
+      <div><span class="ts">23:27:37</span><span class="lv i">INFO</span>application_started</div>
+      <div><span class="ts">23:27:38</span><span class="lv w">WARN</span>log-shipper failed: no such host <span class="k">dropped_total=2</span></div>
+      <div><span class="ts">23:28:02</span><span class="lv i">INFO</span>POST /classify 200 <span class="k">12ms</span></div>
+      <div><span class="ts">23:28:05</span><span class="lv e">ERROR</span>upstream timeout <span class="k">model=intent-v3</span></div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:28px">Menü çubuğu</h3>
+<div class="mb">
+  <div class="h">Şalter <span>2 çalışıyor</span></div>
+  <div class="r"><div class="d on"></div><div class="n">classifier-go</div><div class="p">:8080</div><span class="act">■</span></div>
+  <div class="r"><div class="d on"></div><div class="n">storefront <span style="color:#8a8f98">· BFF</span></div><div class="p">:8081</div><span class="act">■</span></div>
+  <div class="r"><div class="d"></div><div class="n">storefront-web</div><div class="p"></div><span class="act">▶</span></div>
+  <div class="r"><div class="d err"></div><div class="n">docs-api</div><div class="p">çöktü</div><span class="act">↻</span></div>
+  <div class="f"><div>Pencereyi aç</div><div>Tümünü durdur</div><div>Çık</div></div>
+</div>

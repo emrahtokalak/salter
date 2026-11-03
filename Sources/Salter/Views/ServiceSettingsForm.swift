@@ -15,61 +15,130 @@ struct ServiceSettingsForm: View {
     @State private var port = ""
     @State private var saved = false
     @State private var baseline: OverrideEditor.Fields?
+    @State private var showDiscoveredEnv = false
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Ad", text: $name)
-                TextField("Komut", text: $command, axis: .vertical)
-                    .font(.system(.body, design: .monospaced))
-                    .lineLimit(1...4)
-                TextField("Çalışma klasörü", text: $cwd)
-                TextField("Port", text: $port, prompt: Text("örn. 8000"))
-                if service.discovered.supportsReload {
-                    Toggle("Kod değişince yeniden yükle (--reload)", isOn: $reload)
-                }
-            } header: {
-                Text("Genel")
-            } footer: {
-                Text("Değişiklikler bir sonraki başlatmada geçerli olur.").foregroundStyle(.secondary)
-            }
-            Section("Ortam değişkenleri") {
-                TextField("Env dosyası", text: $envFile, prompt: Text("boş = env dosyası yok"))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Ek değişkenler (her satıra KEY=VALUE); keşfedilenlerin üzerine yazar.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextEditor(text: $envText)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(minHeight: 80)
-                }
-                if !service.discovered.env.isEmpty {
-                    DisclosureGroup("Keşfedilen değişkenler (\(service.discovered.env.count))") {
-                        ForEach(service.discovered.env.keys.sorted(), id: \.self) { key in
-                            Text("\(key)=\(service.discovered.env[key] ?? "")")
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                group("Genel") {
+                    row("Ad", note: "Takma ad; boş bırakırsan varsayılan ad kullanılır.") {
+                        TextField("", text: $name, prompt: Text(defaultName)).fieldStyle()
+                    }
+                    row("Komut") {
+                        TextField("", text: $command, axis: .vertical).lineLimit(1...4).fieldStyle(monospaced: true)
+                    }
+                    row("Çalışma klasörü") { TextField("", text: $cwd).fieldStyle() }
+                    row("Port") { TextField("", text: $port, prompt: Text("örn. 8000")).fieldStyle().frame(maxWidth: 120) }
+                    if service.discovered.supportsReload {
+                        row("Yeniden yükleme") {
+                            Toggle("Kod değişince yeniden yükle (--reload)", isOn: $reload)
+                                .toggleStyle(.checkbox)
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(Theme.text)
                         }
                     }
                 }
-            }
-            Section {
-                HStack {
-                    Button("Keşfedilen değerlere dön") { resetToDiscovered() }
-                        .disabled(service.overrides.isEmpty)
-                    Spacer()
-                    if saved { Text("Kaydedildi").foregroundStyle(.secondary) }
-                    Button("Kaydet") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .keyboardShortcut("s")
+                group("Ortam değişkenleri") {
+                    row("Env dosyası") {
+                        TextField("", text: $envFile, prompt: Text("boş = env dosyası yok")).fieldStyle()
+                    }
+                    row("Ek değişkenler", note: "Her satıra KEY=VALUE; keşfedilenlerin üzerine yazar.") {
+                        TextEditor(text: $envText)
+                            .font(.system(size: 12, design: .monospaced))
+                            .scrollContentBackground(.hidden)
+                            .padding(4)
+                            .frame(minHeight: 80)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Theme.bg))
+                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.line))
+                    }
+                    if !service.discovered.env.isEmpty {
+                        row("Keşfedilenler") {
+                            DisclosureGroup("\(service.discovered.env.count) değişken", isExpanded: $showDiscoveredEnv) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    ForEach(service.discovered.env.keys.sorted(), id: \.self) { key in
+                                        Text("\(key)=\(service.discovered.env[key] ?? "")")
+                                            .font(.system(size: 11.5, design: .monospaced))
+                                            .foregroundStyle(Theme.text2)
+                                            .textSelection(.enabled)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(Theme.text2)
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        Button("Keşfedilen değerlere dön") { resetToDiscovered() }
+                            .buttonStyle(QuietButtonStyle())
+                            .disabled(service.overrides.isEmpty)
+                        Spacer()
+                        if saved { Text("Kaydedildi").font(.system(size: 12)).foregroundStyle(Theme.text3) }
+                        Button("Kaydet") { save() }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .keyboardShortcut("s")
+                    }
+                    Text("Değişiklikler bir sonraki başlatmada geçerli olur.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.text3)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel("Tehlikeli bölge")
+                    HStack {
+                        Text("Servisi listeden kaldırır; yeniden taramada öneri olarak gelmez.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.text2)
+                        Spacer()
+                        Button("Servisi kaldır") { model.removeService(service.id) }
+                            .buttonStyle(QuietButtonStyle(tint: Theme.err))
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.panel))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.err.opacity(0.35)))
                 }
             }
-            Section {
-                Button("Servisi kaldır", role: .destructive) { model.removeService(service.id) }
+            .padding(22)
+            .frame(maxWidth: 640, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Theme.bg)
+        .onAppear { load(OverrideEditor.fields(of: service)) }
+    }
+
+    private var defaultName: String {
+        var plain = model.config
+        for r in plain.repos.indices {
+            for s in plain.repos[r].services.indices where plain.repos[r].services[s].id == service.id {
+                plain.repos[r].services[s].overrides.name = nil
             }
         }
-        .formStyle(.grouped)
-        .onAppear { load(OverrideEditor.fields(of: service)) }
+        return DisplayNames(config: plain).services[service.id]?.full ?? ""
+    }
+
+    private func group<Content: View>(_ title: String, @ViewBuilder content: @escaping () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(title)
+            Card {
+                VStack(alignment: .leading, spacing: 12) { content() }
+            }
+        }
+    }
+
+    private func row<Control: View>(_ label: String, note: String? = nil, @ViewBuilder control: () -> Control) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.text2)
+                .frame(width: 140, alignment: .leading)
+            VStack(alignment: .leading, spacing: 4) {
+                control()
+                if let note {
+                    Text(note).font(.system(size: 11)).foregroundStyle(Theme.text3)
+                }
+            }
+        }
     }
 
     private func load(_ fields: OverrideEditor.Fields) {

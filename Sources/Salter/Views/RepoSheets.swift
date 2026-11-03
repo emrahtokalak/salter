@@ -3,9 +3,11 @@ import SwiftUI
 
 struct ServicePickerList: View {
     let services: [DiscoveredService]
+    let repoName: String
     @Binding var selected: Set<String>
 
     var body: some View {
+        let names = ServiceNaming.discoveredNames(services, repoName: repoName)
         ForEach(services, id: \.id) { service in
             Toggle(isOn: Binding(
                 get: { selected.contains(service.id) },
@@ -14,19 +16,21 @@ struct ServicePickerList: View {
                 }
             )) {
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text(service.definition.name)
+                    HStack(spacing: 6) {
+                        Text(names[service.id] ?? repoName).font(.system(size: 13)).foregroundStyle(Theme.text)
                         if let port = service.definition.portHint {
-                            Text(":\(port)").foregroundStyle(.secondary)
+                            Text(":\(String(port))").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.text3)
                         }
                     }
                     Text(ShellWords.join(service.definition.launchCommand))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11.5, design: .monospaced))
+                        .foregroundStyle(Theme.text2)
                         .lineLimit(1)
                         .truncationMode(.head)
                 }
             }
+            .toggleStyle(.checkbox)
+            .padding(.vertical, 3)
         }
     }
 }
@@ -36,16 +40,19 @@ struct SkippedNote: View {
 
     var body: some View {
         if let discovery, !(discovery.skipped.isEmpty && discovery.warnings.isEmpty) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(discovery.warnings, id: \.self) { warning in
-                    Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.warn)
+                        Text(warning).foregroundStyle(Theme.text2)
+                    }
                 }
                 if !discovery.skipped.isEmpty {
-                    Text("Atlanan konfigürasyonlar: " + discovery.skipped.map { "\($0.name) (\($0.reason))" }.joined(separator: ", "))
-                        .foregroundStyle(.secondary)
+                    Text("Atlanan konfigürasyonlar: " + discovery.skipped.map { "\(ServiceNaming.label($0.name)) (\($0.reason))" }.joined(separator: ", "))
+                        .foregroundStyle(Theme.text3)
                 }
             }
-            .font(.caption)
+            .font(.system(size: 11.5))
         }
     }
 }
@@ -57,17 +64,57 @@ struct SheetButtons: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
             Spacer()
             Button("İptal") { dismiss() }
+                .buttonStyle(QuietButtonStyle())
+                .keyboardShortcut(.cancelAction)
             Button(confirmTitle) {
                 onConfirm()
                 dismiss()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PrimaryButtonStyle())
             .keyboardShortcut(.defaultAction)
             .disabled(confirmDisabled)
         }
+    }
+}
+
+/// Title, subtitle and body in the shared sheet chrome.
+struct SheetChrome<Content: View>: View {
+    let title: String
+    var subtitle: String?
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.text)
+                if let subtitle {
+                    Text(subtitle).font(.system(size: 12)).foregroundStyle(Theme.text2)
+                }
+            }
+            content()
+        }
+        .padding(20)
+        .background(Theme.bg)
+    }
+}
+
+/// Bordered scrolling list area used inside sheets.
+struct SheetList<Content: View>: View {
+    var minHeight: CGFloat = 220
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) { content() }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(minHeight: minHeight)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.panel))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.line))
     }
 }
 
@@ -79,34 +126,38 @@ struct NewReposSheet: View {
 
     var body: some View {
         let candidates = model.newRepoCandidates.map(\.path)
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Yeni repolar").font(.title2.bold())
-            Text("Eklemek istediğin repoları ve servislerini seç.").foregroundStyle(.secondary)
-            List {
+        SheetChrome(title: "Yeni repolar", subtitle: "Eklemek istediğin repoları ve servislerini seç.") {
+            SheetList(minHeight: 380) {
                 ForEach(candidates, id: \.self) { path in
                     let services = model.discoveries[path]?.services ?? []
+                    let name = URL(fileURLWithPath: path).lastPathComponent
                     Toggle(isOn: Binding(
                         get: { selectedRepos.contains(path) },
                         set: { isOn in
                             if isOn { selectedRepos.insert(path) } else { selectedRepos.remove(path) }
                         }
                     )) {
-                        HStack {
-                            Text(URL(fileURLWithPath: path).lastPathComponent).bold()
-                            Text(services.isEmpty ? "servis bulunamadı" : "\(services.count) servis").foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text(name).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.text)
+                            Text(services.isEmpty ? "servis bulunamadı" : "\(services.count) servis")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.text3)
                         }
                     }
+                    .toggleStyle(.checkbox)
+                    .padding(.vertical, 3)
                     if selectedRepos.contains(path), !services.isEmpty {
-                        ServicePickerList(services: services, selected: $selectedServices)
+                        ServicePickerList(services: services, repoName: name, selected: $selectedServices)
                             .padding(.leading, 22)
                     }
                 }
             }
-            .frame(minHeight: 380)
             Toggle("Seçmediğim repoları bir daha önerme", isOn: $ignoreRest)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12.5))
+                .foregroundStyle(Theme.text2)
             SheetButtons(confirmTitle: "Ekle") { apply(candidates) }
         }
-        .padding(20)
         .frame(width: 620)
         .onAppear {
             for path in candidates {
@@ -136,22 +187,21 @@ struct AddRepoSheet: View {
     var body: some View {
         let discovery = model.discoveries[path]
         let services = discovery?.services ?? []
-        VStack(alignment: .leading, spacing: 12) {
-            Text(URL(fileURLWithPath: path).lastPathComponent).font(.title2.bold())
-            if services.isEmpty {
-                Text("Bu klasörde servis bulunamadı. Repoyu ekleyip sonra manuel servis tanımlayabilirsin.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Eklenecek servisleri seç:").foregroundStyle(.secondary)
-                List { ServicePickerList(services: services, selected: $selected) }
-                    .frame(minHeight: 220)
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        SheetChrome(
+            title: name,
+            subtitle: services.isEmpty
+                ? "Bu klasörde servis bulunamadı. Repoyu ekleyip sonra manuel servis tanımlayabilirsin."
+                : "Eklenecek servisleri seç."
+        ) {
+            if !services.isEmpty {
+                SheetList { ServicePickerList(services: services, repoName: name, selected: $selected) }
             }
             SkippedNote(discovery: discovery)
             SheetButtons(confirmTitle: "Repoyu ekle") {
                 model.addRepo(path, services: services.filter { selected.contains($0.id) })
             }
         }
-        .padding(20)
         .frame(width: 560)
         .onAppear { selected = Set(services.map(\.id)) }
     }
@@ -165,23 +215,21 @@ struct SuggestionsSheet: View {
     var body: some View {
         let services = model.unmatched[path] ?? []
         let fresh = Set((model.suggestions[path] ?? []).map(\.id))
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Keşfedilen servisler · \(URL(fileURLWithPath: path).lastPathComponent)").font(.title2.bold())
-            if services.isEmpty {
-                Text("Listede olmayan keşfedilmiş servis yok.").foregroundStyle(.secondary)
-            } else {
-                Text("Seçmediklerin bir daha öneri olarak gösterilmez; bu ekrandan her zaman ekleyebilirsin.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                List { ServicePickerList(services: services, selected: $selected) }
-                    .frame(minHeight: 220)
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        SheetChrome(
+            title: "Keşfedilen servisler · \(model.repoTitle(path))",
+            subtitle: services.isEmpty
+                ? "Listede olmayan keşfedilmiş servis yok."
+                : "Seçmediklerin bir daha öneri olarak gösterilmez; bu ekrandan her zaman ekleyebilirsin."
+        ) {
+            if !services.isEmpty {
+                SheetList { ServicePickerList(services: services, repoName: name, selected: $selected) }
             }
             SkippedNote(discovery: model.discoveries[path])
             SheetButtons(confirmTitle: "Kaydet") {
                 model.acceptSuggestions(path, selected: services.filter { selected.contains($0.id) })
             }
         }
-        .padding(20)
         .frame(width: 560)
         .onAppear { selected = fresh }
     }
@@ -196,14 +244,14 @@ struct ManualServiceSheet: View {
     @State private var port = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Manuel servis").font(.title2.bold())
-            Form {
-                TextField("Ad", text: $name, prompt: Text("örn. legacy-ear"))
-                TextField("Komut", text: $command, prompt: Text("örn. mvn spring-boot:run"))
-                    .font(.system(.body, design: .monospaced))
-                TextField("Çalışma klasörü", text: $cwd)
-                TextField("Port (opsiyonel)", text: $port)
+        SheetChrome(title: "Manuel servis", subtitle: model.repoTitle(path)) {
+            VStack(alignment: .leading, spacing: 10) {
+                field("Ad") { TextField("", text: $name, prompt: Text("örn. legacy-ear")).fieldStyle() }
+                field("Komut") {
+                    TextField("", text: $command, prompt: Text("örn. mvn spring-boot:run")).fieldStyle(monospaced: true)
+                }
+                field("Çalışma klasörü") { TextField("", text: $cwd).fieldStyle() }
+                field("Port (opsiyonel)") { TextField("", text: $port).fieldStyle().frame(maxWidth: 120) }
             }
             SheetButtons(
                 confirmTitle: "Ekle",
@@ -215,8 +263,14 @@ struct ManualServiceSheet: View {
                 )
             }
         }
-        .padding(20)
         .frame(width: 480)
         .onAppear { cwd = path }
+    }
+
+    private func field<Control: View>(_ label: String, @ViewBuilder control: () -> Control) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(label).font(.system(size: 12)).foregroundStyle(Theme.text2).frame(width: 110, alignment: .leading)
+            control()
+        }
     }
 }

@@ -3,6 +3,7 @@ import Foundation
 /// Turns a settings-form edit into overrides.
 public enum OverrideEditor {
     public struct Fields: Equatable, Sendable {
+        /// The alias (`overrides.name`); empty means the computed display name is used.
         public var name: String
         public var command: [String]
         public var cwd: String
@@ -29,7 +30,7 @@ public enum OverrideEditor {
     public static func fields(of service: ServiceConfig) -> Fields {
         let e = service.effective
         return Fields(
-            name: e.name, command: e.command, cwd: e.cwd, envFile: e.envFile ?? "",
+            name: service.overrides.name ?? "", command: e.command, cwd: e.cwd, envFile: e.envFile ?? "",
             extraEnv: service.overrides.env ?? [:], reloadEnabled: e.reloadEnabled, portHint: e.portHint
         )
     }
@@ -40,7 +41,10 @@ public enum OverrideEditor {
     public static func apply(edited: Fields, baseline: Fields, to service: ServiceConfig) -> ServiceOverrides {
         let d = service.discovered
         var o = service.overrides
-        if edited.name != baseline.name { o.name = edited.name == d.name ? nil : edited.name }
+        if edited.name != baseline.name {
+            let alias = edited.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            o.name = alias.isEmpty ? nil : alias
+        }
         if edited.command != baseline.command { o.command = edited.command == d.command ? nil : edited.command }
         if edited.cwd != baseline.cwd { o.cwd = edited.cwd == d.cwd ? nil : edited.cwd }
         if edited.envFile != baseline.envFile {
