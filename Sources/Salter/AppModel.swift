@@ -17,6 +17,7 @@ final class AppModel {
     private(set) var names: DisplayNames
     var selection: String?
     let resources = ResourceMonitor()
+    let git = GitModel()
 
     @ObservationIgnored let integration = SystemIntegration()
     @ObservationIgnored private let configStore: ConfigStore

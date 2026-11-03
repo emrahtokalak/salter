@@ -11,6 +11,8 @@ public final class SpawnedProcess: @unchecked Sendable {
     private var exitSource: DispatchSourceProcess?
     private var handles: [FileHandle] = []
     private var exited = false
+    private var openStreams = 0
+    private var onOutputClosed: (@Sendable () -> Void)?
 
     init(pid: pid_t, startTime: UInt64) {
         self.pid = pid
@@ -59,7 +61,11 @@ public final class SpawnedProcess: @unchecked Sendable {
             if data.isEmpty {
                 h.readabilityHandler = nil
                 box.finish { onLines(kind, $0) }
-                self.queue.async { self.handles.removeAll { $0 === h } }
+                self.queue.async {
+                    self.handles.removeAll { $0 === h }
+                    self.openStreams -= 1
+                    if self.openStreams == 0 { self.onOutputClosed?() }
+                }
                 return
             }
             if let token = box.append(data, deliver: { onLines(kind, $0) }) {
@@ -69,6 +75,15 @@ public final class SpawnedProcess: @unchecked Sendable {
             }
         }
         queue.sync { handles.append(handle) }
+    }
+
+    /// Called once after every output stream reached EOF (all output has been delivered).
+    /// Set before any reader is attached, so an early EOF can never be counted ahead of its stream.
+    func watchOutputClosed(_ handler: (@Sendable () -> Void)?, streams: Int) {
+        queue.sync {
+            onOutputClosed = handler
+            openStreams = streams
+        }
     }
 
     func watchExit(onExit: @escaping ProcessRunner.ExitHandler) {
@@ -111,7 +126,8 @@ public enum ProcessRunner {
     public static func spawn(
         _ request: SpawnRequest,
         onLines: @escaping LinesHandler,
-        onExit: @escaping ExitHandler
+        onExit: @escaping ExitHandler,
+        onOutputClosed: (@Sendable () -> Void)? = nil
     ) throws -> SpawnedProcess {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: request.cwd, isDirectory: &isDirectory), isDirectory.boolValue else {
@@ -171,6 +187,7 @@ public enum ProcessRunner {
         }
 
         let process = SpawnedProcess(pid: pid, startTime: ProcessInspector.startTime(of: pid) ?? 0)
+        process.watchOutputClosed(onOutputClosed, streams: 2)
         process.attachReader(fd: outPipe[0], kind: .stdout, onLines: onLines)
         process.attachReader(fd: errPipe[0], kind: .stderr, onLines: onLines)
         process.watchExit(onExit: onExit)
