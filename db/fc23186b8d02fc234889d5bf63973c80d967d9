@@ -1,0 +1,71 @@
+README.md
+  s_81bebfa98cbf32::t_3a7e927037329f 3
+Sources/Salter/Views/RepoSheets.swift
+  s_81bebfa98cbf32::t_039f79bb384a16 249
+Sources/SalterCore/Config/AppConfig.swift
+  s_81bebfa98cbf32::t_5062aa98369952 78
+Tests/SalterCoreTests/ConfigStoreTests.swift
+  s_81bebfa98cbf32::t_9494381c1c2948 97
+Tests/SalterCoreTests/Fixtures/README.md
+  s_81bebfa98cbf32::t_e966ed6b8946e9 1-4
+Tests/SalterCoreTests/Fixtures/analytics-worker/launch.json
+  s_81bebfa98cbf32::t_b972e009b2748b 5
+Tests/SalterCoreTests/Fixtures/classifier-go/launch.json
+  s_81bebfa98cbf32::t_5f171614e89563 11,21
+Tests/SalterCoreTests/Fixtures/flow-composer/package.json
+  s_81bebfa98cbf32::t_d305dee5a83d14 2
+Tests/SalterCoreTests/Fixtures/media-pipeline/launch.json
+  s_81bebfa98cbf32::t_cfc6b4b38f288e 19,33,47,50,55,79,82,87,95,98,103,111,114,119,127,130,135,143,152,158,167
+Tests/SalterCoreTests/Fixtures/storefront/launch.json
+  s_81bebfa98cbf32::t_0223f0acf6c76a 14-15,22-23,29-32,37,41-43,52-55
+Tests/SalterCoreTests/Fixtures/wiki-web/package.json
+  s_81bebfa98cbf32::t_c419fbadf2c4b7 2
+Tests/SalterCoreTests/LaunchConfigTranslatorTests.swift
+  s_81bebfa98cbf32::t_e88de09674ca0c 12,16,19-22,29-30,34,37,41-42,45,47,52-53,57-61,65,69-70,73-75,77-78,80,83,85,120,123,125-127
+Tests/SalterCoreTests/LaunchJsonParserTests.swift
+  s_81bebfa98cbf32::t_faf6d53a904444 7,16
+Tests/SalterCoreTests/LogLineParserTests.swift
+  s_81bebfa98cbf32::t_87cfd4bf32759e 71,74
+Tests/SalterCoreTests/LogTests.swift
+  s_81bebfa98cbf32::t_e2f66d3e86f4c6 76
+Tests/SalterCoreTests/PackageJsonTranslatorTests.swift
+  s_81bebfa98cbf32::t_5474f51c3026a2 13,15,18,25,31
+Tests/SalterCoreTests/RepoScannerTests.swift
+  s_81bebfa98cbf32::t_58d6b566f35261 73
+Tests/SalterCoreTests/ServiceNamingTests.swift
+  s_81bebfa98cbf32::t_25fe3679a9465b 32,41,43-44,48-50,76-77,82,85,87,101-102,136-137,141-142
+docs/superpowers/plans/2026-10-09-devlauncher.md
+  s_81bebfa98cbf32::t_d0dc481f3a40d0 5,169,814-815,831,840,874,878,881-884,891-892,896,899,903-904,907,909,914-915,919-923,927,931-932,935-937,939-940,942,945,947,1260,1277-1278,1298,1300,1303,1310,1316,1910,2070,2975,5273,5678,5713,5716,5718
+docs/superpowers/plans/2026-11-02-multi-language-discovery.md
+  s_81bebfa98cbf32::t_87d78edb481440 84,98,101,103-105,189,242
+docs/superpowers/plans/2026-11-03-git-controls.md
+  s_81bebfa98cbf32::t_d070007e5b5389 278
+docs/superpowers/plans/2026-11-03-ui-redesign.md
+  s_81bebfa98cbf32::t_bdf9f2286f0759 116,127-128,130-131,145-146,148-149,157,250-251
+docs/superpowers/specs/2026-10-09-devlauncher-design.md
+  s_81bebfa98cbf32::t_652c64f8a3324a 10,38-39,41,43,46-49,114,176-178,181,183,210,264-266
+docs/superpowers/specs/2026-11-02-multi-language-discovery-design.md
+  s_81bebfa98cbf32::t_58852dc21dbabd 9,12,20-21,52,62,95,221-222
+docs/superpowers/specs/2026-11-02-ui-redesign-design.md
+  s_81bebfa98cbf32::t_f68c43ffa7973f 68,74,79
+docs/superpowers/specs/2026-11-03-git-controls-design.md
+  s_81bebfa98cbf32::t_03152496dae479 29
+docs/superpowers/specs/assets/2026-11-02-ui-redesign-mockup.html
+  s_81bebfa98cbf32::t_c88d0517ffaba0 54-57,59,61-64,69,71,75,87,89,99-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbfc23186b8d02fc234889d5bf63973c80d967d9",
+  "prompts": {},
+  "sessions": {
+    "s_81bebfa98cbf32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34036f3f-af71-4488-91f4-f893059fe480",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Emrah Tokalak <emrahtokalak@gmail.com>"
+    }
+  }
+}
