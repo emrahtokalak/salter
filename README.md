@@ -1,4 +1,4 @@
-# Şalter
+# <img src="docs/images/icon.png" width="44" alt="Şalter icon" align="top"> Şalter
 
 Şalter is a macOS menu-bar and window app that discovers the dev services in your local repos and lets you start, stop and watch them without opening VS Code or a terminal.
 
