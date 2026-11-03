@@ -161,6 +161,7 @@ struct Sidebar: View {
                 repo: repo,
                 title: model.repoTitle(repo.path),
                 expanded: !collapsed.contains(repo.path),
+                hasChildren: !visible.isEmpty,
                 sheet: $sheet
             ) {
                 if collapsed.contains(repo.path) { collapsed.remove(repo.path) } else { collapsed.insert(repo.path) }
@@ -239,6 +240,8 @@ struct RepoGroupRow: View {
     let repo: RepoConfig
     let title: String
     let expanded: Bool
+    /// False when every service is pinned (or there are none); the row then only carries the repo menu.
+    let hasChildren: Bool
     @Binding var sheet: SheetRoute?
     let toggle: () -> Void
     @State private var hovering = false
@@ -249,6 +252,7 @@ struct RepoGroupRow: View {
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(Theme.text3)
                 .frame(width: 12)
+                .opacity(hasChildren ? 1 : 0)
             Text(title)
                 .font(.system(size: 12.5))
                 .foregroundStyle(Theme.text2)
@@ -267,7 +271,7 @@ struct RepoGroupRow: View {
         .frame(height: 26)
         .background(RoundedRectangle(cornerRadius: 6).fill(hovering ? Theme.selection.opacity(0.5) : .clear))
         .contentShape(Rectangle())
-        .onTapGesture(perform: toggle)
+        .onTapGesture { if hasChildren { toggle() } }
         .onHover { hovering = $0 }
         .contextMenu { RepoMenu(repo: repo, sheet: $sheet) }
     }
