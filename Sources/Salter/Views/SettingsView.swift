@@ -9,20 +9,39 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 group("Taranan klasörler") {
+                    Text("Şalter bu klasörlerin altındaki projeleri tarar, yeni repo bulunca haber verir. Tek bir projeyi eklemek için kenar çubuğundaki + menüsünden “Repo ekle…” seçeneğini kullan.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if model.config.roots.isEmpty {
+                        Text("Henüz taranan klasör yok. Projelerinin bulunduğu üst klasörü (örn. ~/Projects) ekle.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.text3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     ForEach(model.config.roots, id: \.self) { root in
-                        HStack {
-                            Text(root)
-                                .font(.system(size: 12.5))
-                                .foregroundStyle(Theme.text)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                        HStack(spacing: 8) {
+                            Image(systemName: "folder").font(.system(size: 12)).foregroundStyle(Theme.text3)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text((root as NSString).abbreviatingWithTildeInPath)
+                                    .font(.system(size: 12.5))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Text("\(model.repoCount(inRoot: root)) repo ekli")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.text3)
+                            }
                             Spacer()
-                            Button { Task { await model.removeRoot(root) } } label: { Image(systemName: "minus") }
-                                .buttonStyle(PlainTextButtonStyle(color: Theme.text3))
-                                .help("Kaldır")
+                            Button("Finder'da göster") { model.integration.reveal(root) }
+                                .buttonStyle(QuietButtonStyle(height: 24, tint: Theme.text2))
+                            Button("Kaldır") { Task { await model.removeRoot(root) } }
+                                .buttonStyle(QuietButtonStyle(height: 24, tint: Theme.err))
+                                .help("Bu klasörü taramayı bırak; ekli repolar listede kalır.")
                         }
                     }
-                    Button("Klasör ekle…") { addRoot() }.buttonStyle(QuietButtonStyle(height: 24))
+                    Button("Taranacak klasör ekle…") { RepoActions.addRootFromPanel(model) }
+                        .buttonStyle(QuietButtonStyle(height: 24))
                 }
                 group("Genel") {
                     Toggle("Login'de başlat", isOn: Binding(
@@ -82,12 +101,4 @@ struct SettingsView: View {
         }
     }
 
-    private func addRoot() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.prompt = "Ekle"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task { await model.addRoot(url.path) }
-    }
 }

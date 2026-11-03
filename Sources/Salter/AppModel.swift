@@ -222,6 +222,19 @@ final class AppModel {
         }
     }
 
+    /// Pinned services that are stopped or crashed, i.e. what "Sabitlenenleri başlat" would start.
+    var startablePinnedIDs: [String] { pinnedIDs.filter { !status($0).isActive } }
+
+    func startPinned() {
+        for id in startablePinnedIDs { start(id) }
+    }
+
+    /// Number of configured repos inside a scanned folder.
+    func repoCount(inRoot root: String) -> Int {
+        let prefix = root.hasSuffix("/") ? root : root + "/"
+        return config.repos.filter { $0.path.hasPrefix(prefix) }.count
+    }
+
     func stopAll() async {
         let active = supervisors.values.filter { $0.status.isActive }
         await withTaskGroup(of: Void.self) { group in
