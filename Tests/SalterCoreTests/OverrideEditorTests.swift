@@ -36,7 +36,7 @@ import Testing
         #expect(baseline.name == "Benim API")
         #expect(baseline.extraEnv == ["A": "1"])
         var edited = baseline
-        edited.name = "api"
+        edited.name = ""
         edited.extraEnv = [:]
         edited.command = ["py", "x"]
         let overrides = OverrideEditor.apply(edited: edited, baseline: baseline, to: svc)
@@ -54,5 +54,29 @@ import Testing
         let overrides = OverrideEditor.apply(edited: edited, baseline: baseline, to: svc)
         #expect(overrides.cwd == "/elsewhere")
         #expect(overrides.envFile == "")
+    }
+
+    @Test func nameFieldShowsAliasOnly() {
+        var svc = service(port: "8010")
+        #expect(OverrideEditor.fields(of: svc).name == "")
+        svc.overrides.name = "X"
+        #expect(OverrideEditor.fields(of: svc).name == "X")
+    }
+
+    @Test func clearingNameRemovesAlias() {
+        var svc = service(port: "8010")
+        svc.overrides.name = "X"
+        let baseline = OverrideEditor.fields(of: svc)
+        var edited = baseline
+        edited.name = "  "
+        #expect(OverrideEditor.apply(edited: edited, baseline: baseline, to: svc).name == nil)
+    }
+
+    @Test func settingNameStoresTrimmedAlias() {
+        let svc = service(port: "8010")
+        let baseline = OverrideEditor.fields(of: svc)
+        var edited = baseline
+        edited.name = " Intent "
+        #expect(OverrideEditor.apply(edited: edited, baseline: baseline, to: svc).name == "Intent")
     }
 }
