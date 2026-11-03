@@ -4,10 +4,10 @@ import SwiftUI
 extension ServiceStatus {
     var color: Color {
         switch self {
-        case .stopped: return .secondary
-        case .starting, .stopping: return .orange
-        case .running: return .green
-        case .crashed: return .red
+        case .stopped: return Theme.text3
+        case .starting, .stopping: return Theme.warn
+        case .running: return Theme.ok
+        case .crashed: return Theme.err
         }
     }
 
@@ -19,6 +19,17 @@ extension ServiceStatus {
             return ports.isEmpty ? "Çalışıyor" : "Çalışıyor · " + ports.map { ":\($0)" }.joined(separator: " ")
         case .stopping: return "Durduruluyor…"
         case .crashed(let exit): return "Çöktü (\(exit))"
+        }
+    }
+
+    /// Status pill text in the detail header, e.g. "Çalışıyor · 4 dk".
+    func pillLabel(since startedAt: Date?, now: Date = Date()) -> String {
+        switch self {
+        case .running:
+            guard let startedAt else { return "Çalışıyor" }
+            return "Çalışıyor · " + ResourceFormat.duration(now.timeIntervalSince(startedAt))
+        case .crashed(let exit): return "Çöktü (\(exit))"
+        default: return label
         }
     }
 
@@ -36,7 +47,13 @@ struct StatusDot: View {
     var body: some View {
         Circle()
             .fill(status.color)
-            .frame(width: 8, height: 8)
+            .frame(width: 7, height: 7)
+            .background {
+                if case .running = status {
+                    Circle().fill(Theme.ok.opacity(0.15)).frame(width: 13, height: 13)
+                }
+            }
+            .frame(width: 13, height: 13)
             .help(status.label)
     }
 }

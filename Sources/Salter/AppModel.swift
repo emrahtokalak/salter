@@ -14,7 +14,9 @@ final class AppModel {
     private(set) var unmatched: [String: [DiscoveredService]] = [:]
     private(set) var newRepoCandidates: [URL] = []
     private(set) var isScanning = false
+    private(set) var names: DisplayNames
     var selection: String?
+    let resources = ResourceMonitor()
 
     @ObservationIgnored let integration = SystemIntegration()
     @ObservationIgnored private let configStore: ConfigStore
@@ -33,6 +35,7 @@ final class AppModel {
         runtimeStore = RuntimeStateStore(directory: directory)
         let loaded = configStore.load()
         config = loaded.config
+        names = DisplayNames(config: loaded.config)
         configWarning = loaded.warning
         ensureSupervisors()
     }
@@ -59,6 +62,12 @@ final class AppModel {
             resolveOrphans(adopt: adopt)
         }
         startPolling()
+        resources.start { [weak self] in
+            guard let self else { return [] }
+            return self.supervisors.values.map {
+                ResourceMonitor.Target(id: $0.id, pgid: $0.pgid, mainPID: $0.runtimeRecord?.pid)
+            }
+        }
     }
 
     func reloadShell() async {
@@ -126,8 +135,14 @@ final class AppModel {
     // MARK: Lookups
 
     func service(_ id: String) -> ServiceConfig? { config.service(id: id) }
-    func displayName(_ id: String) -> String { service(id)?.effective.name ?? id }
-    func repoName(of id: String) -> String { config.repo(containing: id)?.name ?? "" }
+    func displayName(_ id: String) -> String { names.services[id]?.full ?? id }
+    func repoName(of id: String) -> String { config.repo(containing: id).map { repoTitle($0.path) } ?? "" }
+    func inGroupName(_ id: String) -> String { names.services[id]?.inGroup ?? displayName(id) }
+    func repoTitle(_ path: String) -> String { names.repos[path] ?? URL(fileURLWithPath: path).lastPathComponent }
+    func breadcrumb(of id: String) -> String {
+        guard let repo = config.repo(containing: id) else { return "" }
+        return ServiceNaming.breadcrumb(repoPath: repo.path, roots: config.roots)
+    }
     func status(_ id: String) -> ServiceStatus { supervisors[id]?.status ?? .stopped }
     var activeCount: Int { supervisors.values.filter { $0.status.isActive }.count }
     var hasCrash: Bool { supervisors.values.contains { $0.status.isCrashed } }
@@ -172,14 +187,14 @@ final class AppModel {
         do {
             plan = try LaunchPlanner.plan(definition, shell: shell.variables)
         } catch {
-            supervisor.appendSystem(["❌ başlatılamadı: \(error)"])
-            Alerts.info("\(definition.name) başlatılamadı", "\(error)")
+            supervisor.appendSystem(["başlatılamadı: \(error)"])
+            Alerts.info("\(displayName(supervisor.id)) başlatılamadı", "\(error)")
             return
         }
         do {
             try supervisor.start(plan, expectsPort: definition.portHint != nil)
         } catch {
-            Alerts.info("\(definition.name) başlatılamadı", "\(error)")
+            Alerts.info("\(displayName(supervisor.id)) başlatılamadı", "\(error)")
         }
     }
 
@@ -254,6 +269,14 @@ final class AppModel {
                 }
             }
         }
+    }
+
+    /// Sets the user's name for a service; blank removes it.
+    func setAlias(_ id: String, _ alias: String) {
+        guard var overrides = service(id)?.overrides else { return }
+        let trimmed = alias.trimmingCharacters(in: .whitespacesAndNewlines)
+        overrides.name = trimmed.isEmpty ? nil : trimmed
+        updateOverrides(id, overrides)
     }
 
     func removeService(_ id: String) {
@@ -408,6 +431,7 @@ final class AppModel {
 
     private func mutate(_ change: (inout AppConfig) -> Void) {
         change(&config)
+        names = DisplayNames(config: config)
         do {
             try configStore.save(config)
         } catch {
