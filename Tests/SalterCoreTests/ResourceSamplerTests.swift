@@ -66,6 +66,20 @@ import Testing
         #expect(h.points.map(\.date) == [t0 + 200, t0 + 400])
     }
 
+    @Test func veryShortIntervalHasNoCPU() {
+        var h = ResourceHistory()
+        h.record([s(1, 1)], mainPID: 1, at: t0)
+        h.record([s(1, 4)], mainPID: 1, at: t0 + 0.005)
+        #expect(h.latest?.cpuPercent == nil)
+    }
+
+    @Test func outOfOrderSampleIsIgnored() {
+        var h = ResourceHistory()
+        h.record([s(1, 1)], mainPID: 1, at: t0 + 2)
+        h.record([s(1, 0.5)], mainPID: 1, at: t0)
+        #expect(h.points.map(\.date) == [t0 + 2])
+    }
+
     @Test func formatting() {
         #expect(ResourceFormat.cpu(3.42) == "%3,4")
         #expect(ResourceFormat.cpu(27.6) == "%28")

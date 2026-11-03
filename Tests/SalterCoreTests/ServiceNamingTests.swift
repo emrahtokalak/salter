@@ -109,4 +109,36 @@ import Testing
         #expect(ServiceNaming.discoveredNames([d("a", "Run")], repoName: "svc") == ["a": "svc"])
         #expect(ServiceNaming.discoveredNames([d("a", "Debug BFF"), d("b", "🚀 Debug Worker")], repoName: "svc") == ["a": "BFF", "b": "Worker"])
     }
+
+    @Test func cleanDropsKeycapsTextPresentationAndTagEmoji() {
+        #expect(ServiceNaming.clean("☕︎ Run") == "")
+        #expect(ServiceNaming.clean("🏴󠁧󠁢󠁥󠁮󠁧󠁿 Run") == "")
+        #expect(ServiceNaming.clean("1️⃣ API") == "API")
+        #expect(ServiceNaming.clean("#️⃣ Debug") == "")
+    }
+
+    @Test func cleanStripsDebuggerAndInnerSeparators() {
+        #expect(ServiceNaming.clean("Python Debugger: FastAPI") == "Python: FastAPI")
+        #expect(ServiceNaming.clean("Debugging API") == "API")
+        #expect(ServiceNaming.clean("Python: Debug: Tests") == "Python: Tests")
+    }
+
+    @Test func symbolOnlySuffixFallsBackToPosition() {
+        let n = names([repo("/p/r", [svc("a", "☕︎ Run"), svc("b", "1️⃣ Debug")])])
+        #expect(n.services["a"]?.inGroup == "1")
+        #expect(n.services["b"]?.inGroup == "2")
+    }
+
+    @Test func namesInsideOneRepoNeverRepeat() {
+        let n = names([repo("/p/r", [
+            svc("a", "BFF", kind: .launchJson, alias: "BFF"),
+            svc("b", "Debug BFF"),
+            svc("c", "legacy-ear", kind: .manual),
+            svc("d", "legacy-ear", kind: .manual),
+        ])])
+        #expect(n.services["a"]?.inGroup == "BFF")
+        #expect(n.services["b"]?.inGroup == "BFF 2")
+        #expect(n.services["c"]?.inGroup == "legacy-ear")
+        #expect(n.services["d"]?.inGroup == "legacy-ear 2")
+    }
 }

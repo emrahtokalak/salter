@@ -74,6 +74,8 @@ public struct ResourcePoint: Equatable, Sendable {
 /// A service's recent usage: one point per sample, kept for `window` seconds.
 public struct ResourceHistory: Equatable, Sendable {
     public static let window: TimeInterval = 300
+    /// Shorter gaps (e.g. two samples delivered back to back) give meaningless CPU ratios.
+    static let minimumCPUInterval: TimeInterval = 0.5
 
     public private(set) var points: [ResourcePoint] = []
     private var previousCPU: [pid_t: UInt64] = [:]
@@ -84,8 +86,9 @@ public struct ResourceHistory: Equatable, Sendable {
     public var latest: ResourcePoint? { points.last }
 
     public mutating func record(_ samples: [ProcessSample], mainPID: pid_t?, at date: Date) {
+        if let previousDate, date <= previousDate { return }
         var cpu: Double?
-        if let previousDate, date > previousDate {
+        if let previousDate, date.timeIntervalSince(previousDate) >= Self.minimumCPUInterval {
             var nanos: UInt64 = 0
             for sample in samples {
                 if let before = previousCPU[sample.pid], sample.cpuNanos > before {

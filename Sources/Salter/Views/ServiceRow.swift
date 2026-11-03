@@ -7,6 +7,9 @@ struct SidebarRow<Extra: View>: View {
     let id: String
     let title: String
     var indent = false
+    /// Repo path whose new-service suggestions are badged on this row (flat single-service repos).
+    var suggestions: String?
+    var sheet: Binding<SheetRoute?>?
     let onRename: (String) -> Void
     @ViewBuilder var extraMenu: () -> Extra
     @State private var hovering = false
@@ -22,6 +25,13 @@ struct SidebarRow<Extra: View>: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 4)
+            if let path = suggestions, let count = model.suggestions[path]?.count, count > 0 {
+                Button("\(count) yeni") { sheet?.wrappedValue = .suggestions(path) }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.text3)
+                    .help("Keşfedilen yeni servisler")
+            }
             if model.service(id)?.sourceMissing == true {
                 Image(systemName: "questionmark.circle")
                     .font(.system(size: 11))
@@ -55,7 +65,7 @@ struct SidebarRow<Extra: View>: View {
 
 extension SidebarRow where Extra == EmptyView {
     init(id: String, title: String, indent: Bool = false, onRename: @escaping (String) -> Void) {
-        self.init(id: id, title: title, indent: indent, onRename: onRename) { EmptyView() }
+        self.init(id: id, title: title, indent: indent, suggestions: nil, sheet: nil, onRename: onRename) { EmptyView() }
     }
 }
 

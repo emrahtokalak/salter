@@ -128,9 +128,11 @@ struct Sidebar: View {
         .onKeyPress(.upArrow) { moveSelection(-1) }
         .onKeyPress(.downArrow) { moveSelection(1) }
         .alert("Yeniden adlandır", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("Ad", text: $renameText)
+            TextField("Ad", text: $renameText, prompt: Text(renaming.map { model.displayName($0) } ?? ""))
             Button("Kaydet") {
-                if let renaming { model.setAlias(renaming, renameText) }
+                if let renaming, renameText != (model.service(renaming)?.overrides.name ?? "") {
+                    model.setAlias(renaming, renameText)
+                }
                 renaming = nil
             }
             Button("İptal", role: .cancel) { renaming = nil }
@@ -152,7 +154,7 @@ struct Sidebar: View {
     private func repoEntry(_ repo: RepoConfig) -> some View {
         let visible = repo.services.filter { !model.isPinned($0.id) }
         if repo.services.count == 1, let only = visible.first {
-            SidebarRow(id: only.id, title: model.displayName(only.id), onRename: rename) {
+            SidebarRow(id: only.id, title: model.displayName(only.id), suggestions: repo.path, sheet: $sheet, onRename: rename) {
                 Divider()
                 RepoMenu(repo: repo, sheet: $sheet)
             }
@@ -200,7 +202,7 @@ struct Sidebar: View {
     // MARK: Actions
 
     private func rename(_ id: String) {
-        renameText = model.service(id)?.overrides.name ?? model.displayName(id)
+        renameText = model.service(id)?.overrides.name ?? ""
         renaming = id
     }
 

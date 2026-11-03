@@ -15,23 +15,43 @@ public struct ServiceName: Equatable, Sendable {
 /// Display-name rules. Discovered names ("🚀 Debug FastAPI") are cleaned; the repo name is the title.
 public enum ServiceNaming {
     private static let parenDebug = try! NSRegularExpression(pattern: #"\(\s*debug\s*\)"#, options: .caseInsensitive)
-    private static let noiseWords = try! NSRegularExpression(pattern: #"\b(debug|run)\b"#, options: .caseInsensitive)
+    private static let noiseWords = try! NSRegularExpression(
+        pattern: #"(?<![\w-])(debug(?:ger|ging)?|run)(?![\w-])"#,
+        options: .caseInsensitive
+    )
+    /// ": :" or "- :" left behind once a word between separators is removed.
+    private static let repeatedSeparators = try! NSRegularExpression(pattern: #"([:·-])(\s*[:·-])+"#)
     private static let edgeTrim = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ":-·"))
 
     /// Strips emoji, the words "Debug"/"Run" and leftover separators.
     public static func clean(_ raw: String) -> String {
+        let source = Array(raw.unicodeScalars)
         var scalars = String.UnicodeScalarView()
-        for scalar in raw.unicodeScalars {
-            let p = scalar.properties
-            let isEmoji = p.isEmojiPresentation || (p.isEmoji && scalar.value > 0x238C)
-            if isEmoji || scalar.value == 0xFE0F || scalar.value == 0x200D { continue }
+        for (index, scalar) in source.enumerated() {
+            if isEmojiPart(scalar) { continue }
+            // Keycap base ("1" in "1️⃣"): followed by U+20E3, optionally after a variation selector.
+            let next = source.dropFirst(index + 1).first { $0.value != 0xFE0F && $0.value != 0xFE0E }
+            if next?.value == 0x20E3 { continue }
             scalars.append(scalar)
         }
         var text = String(scalars)
         text = replace(parenDebug, in: text)
         text = replace(noiseWords, in: text)
         text = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        return text.trimmingCharacters(in: edgeTrim)
+        text = repeatedSeparators.stringByReplacingMatches(
+            in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "$1"
+        )
+        text = text.replacingOccurrences(of: " :", with: ":")
+        text = text.trimmingCharacters(in: edgeTrim)
+        return text.contains(where: { $0.isLetter || $0.isNumber }) ? text : ""
+    }
+
+    private static func isEmojiPart(_ scalar: Unicode.Scalar) -> Bool {
+        let p = scalar.properties
+        switch scalar.value {
+        case 0xFE0E, 0xFE0F, 0x200D, 0x20E3, 0xE0020...0xE007F: return true
+        default: return p.isEmojiPresentation || (p.isEmoji && scalar.value > 0x238C)
+        }
     }
 
     /// A cleaned name for messages about a launch configuration; never empty.
@@ -65,9 +85,20 @@ public enum ServiceNaming {
     static func repoNames(repoName: String, entries: [Entry]) -> [String: ServiceName] {
         var result: [String: ServiceName] = [:]
         var used: Set<String> = []
+        func unique(_ name: String) -> String {
+            var candidate = name
+            var n = 2
+            while used.contains(candidate) {
+                candidate = "\(name) \(n)"
+                n += 1
+            }
+            used.insert(candidate)
+            return candidate
+        }
         for (index, entry) in entries.enumerated() {
             if let alias = entry.alias {
-                result[entry.id] = ServiceName(full: alias, inGroup: alias)
+                let name = unique(alias)
+                result[entry.id] = ServiceName(full: name, inGroup: name)
                 continue
             }
             if entries.count == 1 {
@@ -76,12 +107,7 @@ public enum ServiceNaming {
             }
             var suffix = clean(entry.raw)
             if suffix.isEmpty { suffix = String(index + 1) }
-            if used.contains(suffix) {
-                var n = 2
-                while used.contains("\(suffix) \(n)") { n += 1 }
-                suffix = "\(suffix) \(n)"
-            }
-            used.insert(suffix)
+            suffix = unique(suffix)
             result[entry.id] = ServiceName(full: "\(repoName) · \(suffix)", inGroup: suffix)
         }
         return result

@@ -21,32 +21,31 @@ final class ResourceMonitor {
         task?.cancel()
         task = Task { [weak self] in
             while !Task.isCancelled {
-                self?.tick(targets())
+                // Sampling is awaited, so ticks never overlap or land out of order.
+                await self?.tick(targets())
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
     }
 
-    private func tick(_ targets: [Target]) {
-        for target in targets where target.pgid == nil {
+    private func tick(_ targets: [Target]) async {
+        for target in targets where target.pgid == nil && histories[target.id] != nil {
             histories[target.id] = nil
             groups[target.id] = nil
         }
         let live = targets.filter { $0.pgid != nil }
         guard !live.isEmpty else { return }
-        Task {
-            let results = await Task.detached { () -> [(Target, [ProcessSample])] in
-                let table = LibprocTable()
-                return live.map { ($0, table.samples(group: $0.pgid!)) }
-            }.value
-            let now = Date()
-            for (target, samples) in results where !samples.isEmpty {
-                if groups[target.id] != target.pgid {
-                    groups[target.id] = target.pgid
-                    histories[target.id] = ResourceHistory()
-                }
-                histories[target.id]?.record(samples, mainPID: target.mainPID, at: now)
+        let results = await Task.detached { () -> [(Target, [ProcessSample], Date)] in
+            let table = LibprocTable()
+            // Timestamp at sampling time, not when the main actor gets around to the result.
+            return live.map { ($0, table.samples(group: $0.pgid!), Date()) }
+        }.value
+        for (target, samples, date) in results where !samples.isEmpty {
+            if groups[target.id] != target.pgid {
+                groups[target.id] = target.pgid
+                histories[target.id] = ResourceHistory()
             }
+            histories[target.id]?.record(samples, mainPID: target.mainPID, at: date)
         }
     }
 }
