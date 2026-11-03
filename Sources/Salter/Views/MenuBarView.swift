@@ -36,16 +36,25 @@ struct MenuBarView: View {
             }
             Rectangle().fill(Theme.line).frame(height: 1)
             HStack(spacing: 4) {
+                Button { model.startPinned() } label: { Label("Sabitlenenleri başlat", systemImage: "play.fill") }
+                    .disabled(model.startablePinnedIDs.isEmpty)
+                Spacer()
+                Button { Task { await model.stopAll() } } label: { Label("Tümünü durdur", systemImage: "stop.fill") }
+                    .disabled(model.activeCount == 0)
+            }
+            .labelStyle(CompactLabelStyle())
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            HStack(spacing: 4) {
                 Button("Pencereyi aç") { openMainWindow(selecting: nil) }
                 Spacer()
-                Button("Tümünü durdur") { Task { await model.stopAll() } }
-                    .disabled(model.activeCount == 0)
                 Button("Çık") { NSApp.terminate(nil) }
             }
-            .buttonStyle(PlainTextButtonStyle())
             .padding(.horizontal, 8)
-            .padding(.vertical, 8)
+            .padding(.top, 2)
+            .padding(.bottom, 8)
         }
+        .buttonStyle(PlainTextButtonStyle())
         .frame(width: 320)
         .background(Theme.bg)
     }
@@ -86,5 +95,15 @@ struct MenuServiceRow: View {
         .onTapGesture(perform: open)
         .onHover { hovering = $0 }
         .help("Ana pencerede aç")
+    }
+}
+
+/// Small icon + title, for the menu bar's action row.
+struct CompactLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 5) {
+            configuration.icon.font(.system(size: 9))
+            configuration.title
+        }
     }
 }

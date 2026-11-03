@@ -51,12 +51,12 @@ struct GitRow: View {
                 Button { model.gitPull(serviceID) } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.down").font(.system(size: 10, weight: .semibold))
-                        Text("Çek")
+                        Text("Pull")
                     }
                 }
                 .buttonStyle(QuietButtonStyle(height: 24))
                 .disabled(tree.busy || status?.upstream == nil || status?.upstreamGone != false || status?.isDetached != false)
-                .help(status?.upstream.map { "\($0) üzerinden çek (yalnızca ileri sarma)" } ?? "Bu branch'in upstream'i yok")
+                .help(status?.upstream.map { "\($0) üzerinden pull (yalnızca ileri sarma)" } ?? "Bu branch'in upstream'i yok")
 
                 if tree.busy || tree.fetching {
                     ProgressView().controlSize(.small).scaleEffect(0.8)

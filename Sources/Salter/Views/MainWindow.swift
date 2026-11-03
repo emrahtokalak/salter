@@ -44,9 +44,9 @@ struct MainWindow: View {
         }
         .toolbar {
             ToolbarItemGroup {
-                Button { Task { await model.rescan() } } label: { Label("Yeniden tara", systemImage: "arrow.clockwise") }
-                    .help("Yeniden tara")
-                    .disabled(model.isScanning)
+                Button { model.startPinned() } label: { Label("Sabitlenenleri başlat", systemImage: "play.circle") }
+                    .help("Sabitlenenleri başlat")
+                    .disabled(model.startablePinnedIDs.isEmpty)
                 Button { Task { await model.stopAll() } } label: { Label("Tümünü durdur", systemImage: "stop.circle") }
                     .help("Tümünü durdur")
                     .disabled(model.activeCount == 0)
@@ -70,7 +70,8 @@ enum RepoActions {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "Ekle"
+        panel.prompt = "Repoyu ekle"
+        panel.message = "Tek bir projenin klasörünü seç (içinde launch.json, package.json, go.mod … olan klasör)."
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard model.config.repoIndex(path: url.path) == nil else {
             Alerts.info("Repo zaten listede", url.lastPathComponent)
@@ -78,6 +79,22 @@ enum RepoActions {
         }
         _ = model.discover(url)
         sheet.wrappedValue = .addRepo(url.path)
+    }
+
+    /// Adds a parent folder whose subfolders are scanned for projects.
+    static func addRootFromPanel(_ model: AppModel) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Taranacak klasör olarak ekle"
+        panel.message = "Projelerinin bulunduğu üst klasörü seç (örn. ~/Projects). Şalter altındaki projeleri bulup sana sunar."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard !model.config.roots.contains(url.path) else {
+            Alerts.info("Klasör zaten taranıyor", url.path)
+            return
+        }
+        Task { await model.addRoot(url.path) }
     }
 }
 
@@ -104,14 +121,37 @@ struct Sidebar: View {
                         .draggable(id)
                         .dropDestination(for: String.self) { items, _ in movePinned(items.first, before: id) }
                 }
-                HStack {
+                HStack(spacing: 0) {
                     sectionHeader("Repolar")
                     Spacer()
-                    Button { RepoActions.addFromPanel(model, sheet: $sheet) } label: {
-                        Image(systemName: "plus").font(.system(size: 11, weight: .medium))
+                    Group {
+                        Button { Task { await model.rescan() } } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11, weight: .medium))
+                                .rotationEffect(.degrees(model.isScanning ? 360 : 0))
+                                .animation(
+                                    model.isScanning ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default,
+                                    value: model.isScanning
+                                )
+                        }
+                        .buttonStyle(PlainTextButtonStyle(color: Theme.text3))
+                        .disabled(model.isScanning)
+                        .help("Yeniden tara")
+                        Menu {
+                            Button("Repo ekle…") { RepoActions.addFromPanel(model, sheet: $sheet) }
+                            Button("Taranacak klasör ekle…") { RepoActions.addRootFromPanel(model) }
+                            Divider()
+                            SettingsLink { Text("Taranan klasörler…") }
+                        } label: {
+                            Image(systemName: "plus").font(.system(size: 11, weight: .medium))
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .foregroundStyle(Theme.text3)
+                        .padding(.horizontal, 6)
+                        .help("Repo ya da taranacak klasör ekle")
                     }
-                    .buttonStyle(PlainTextButtonStyle(color: Theme.text3))
-                    .help("Repo ekle")
                     .padding(.top, 8)
                 }
                 ForEach(model.config.repos, id: \.path) { repo in
