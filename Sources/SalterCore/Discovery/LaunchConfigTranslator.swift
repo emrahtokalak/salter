@@ -31,7 +31,7 @@ public enum LaunchConfigTranslator {
             case .success(let candidate):
                 candidates.append(candidate)
                 if let task = config.preLaunchTask {
-                    warnings.append("\(config.name): preLaunchTask '\(task)' çalıştırılmıyor")
+                    warnings.append("\(ServiceNaming.label(config.name)): preLaunchTask '\(task)' çalıştırılmıyor")
                 }
             case .failure(let reason):
                 skipped.append(SkippedConfig(name: config.name, reason: reason.message))

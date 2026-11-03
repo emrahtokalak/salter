@@ -145,6 +145,15 @@ import Testing
         #expect(r.warnings == ["A: preLaunchTask 'gen' çalıştırılmıyor"])
     }
 
+    @Test func preLaunchTaskWarningUsesCleanLabel() throws {
+        let r = try translateJSON("""
+        { "configurations": [
+          { "name": "Debug API", "type": "go", "request": "launch", "program": "${workspaceFolder}", "preLaunchTask": "gen" }
+        ] }
+        """)
+        #expect(r.warnings == ["API: preLaunchTask 'gen' çalıştırılmıyor"])
+    }
+
     @Test func goProgramRelativeToCwdWithSpaces() throws {
         let r = try translateJSON("""
         { "configurations": [
