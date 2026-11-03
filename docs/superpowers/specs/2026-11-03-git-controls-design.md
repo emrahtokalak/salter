@@ -71,7 +71,9 @@ A git row in the detail header, near the command line:
 - After a successful switch, show the restart prompt if any service of the repo is running (see below).
 
 ### Pull
-- Runs `git pull --ff-only`. (Claude's call: it never creates merge commits or conflicts, so the repo cannot be left half-merged.)
+- Equivalent of `git pull --ff-only`, run as two steps (Claude's call): it never creates merge commits or conflicts, so the repo cannot be left half-merged.
+  1. `git fetch` (network, subject to the ~60 s timeout);
+  2. `git merge --ff-only @{u}` (local, **no timeout**). Killing a process mid-checkout could leave `index.lock` or a partly updated tree.
 - Outcomes and messages:
 
   | Outcome | Message |
@@ -92,7 +94,12 @@ A git row in the detail header, near the command line:
 - "Yeniden başlat" restarts exactly those running services with the existing restart path.
 
 ### Concurrency
-- One git operation per repo at a time. While one runs:
+- "Repo" for git purposes = the **git working tree** (`git rev-parse --show-toplevel` of the Şalter repo path). All Şalter repos and services under the same working tree share the busy state, the restart prompt and the log lines. Today each configured repo is its own working tree, so this rarely matters. (Claude's call.)
+- **Background fetches** (on detail open / picker open) do not count as an operation:
+  - they disable nothing;
+  - a failed background fetch stays quiet and only leaves "son kontrol" stale.
+  - When the user starts a pull or switch, any background fetch already running in that working tree is killed first. (Claude's call.)
+- One user git operation (pull or switch) per working tree at a time. While one runs:
   - the branch button and the Çek button are disabled;
   - a spinner is shown;
   - the other services' detail screens of the same repo show the same busy state.
@@ -124,3 +131,6 @@ Integration tests against real temporary git repos (`git init` plus a bare "remo
 - Untracked files do not block a branch switch; only tracked modifications do.
 - One system line per git action in the service logs.
 - Git UI only in the detail screen.
+- Pull split into a timed fetch + untimed `merge --ff-only @{u}`.
+- Git operations keyed by working-tree root, not by Şalter repo.
+- Background fetches never lock the controls; a user action kills a running background fetch.
