@@ -94,6 +94,6 @@ import Testing
         #expect(c.repo(containing: "api/dev")?.name == "api")
         #expect(c.repoIndex(path: "/api") == 0)
         #expect(c.allServiceIDs == ["api/dev"])
-        #expect(AppConfig.defaultConfig(home: URL(fileURLWithPath: "/Users/u")).roots == ["/Users/u/Projects/acme"])
+        #expect(AppConfig.defaultConfig(home: URL(fileURLWithPath: "/Users/u")).roots == ["/Users/u/Projects"])
     }
 }

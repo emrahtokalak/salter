@@ -1,6 +1,6 @@
 # Şalter
 
-`~/Projects/acme` altındaki servisleri (FastAPI/uvicorn, Temporal worker'ları, Vite/Next dev
+`~/Projects` altındaki servisleri (FastAPI/uvicorn, Temporal worker'ları, Vite/Next dev
 server'ları) VS Code açmadan başlatıp durduran native macOS menu bar + masaüstü uygulaması.
 Teknik adı `salter` (paket, bundle id, klasörler); görünen adı **Şalter**.
 

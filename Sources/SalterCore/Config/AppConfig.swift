@@ -75,7 +75,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     public static func defaultConfig(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> AppConfig {
-        AppConfig(roots: [home.appendingPathComponent("Projects/acme").path])
+        AppConfig(roots: [home.appendingPathComponent("Projects").path])
     }
 
     public func service(id: String) -> ServiceConfig? {
