@@ -18,6 +18,9 @@ struct MenuBarView: View {
             .padding(.horizontal, 14)
             .padding(.top, 12)
             .padding(.bottom, 8)
+            if let release = model.updates.available {
+                UpdateBanner(release: release).padding(.horizontal, 8).padding(.bottom, 8)
+            }
             if model.pinnedIDs.isEmpty {
                 Text("Sabitlenmiş servis yok. Ana pencerede bir servise sağ tıklayıp “Sabitle” diyebilirsin.")
                     .font(.system(size: 12))

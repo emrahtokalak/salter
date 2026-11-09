@@ -3,16 +3,20 @@ import Foundation
 public struct AppSettings: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     public var crashNotifications: Bool
+    /// Check GitHub releases once a day and announce a newer version.
+    public var updateChecks: Bool
 
-    public init(launchAtLogin: Bool = false, crashNotifications: Bool = true) {
+    public init(launchAtLogin: Bool = false, crashNotifications: Bool = true, updateChecks: Bool = true) {
         self.launchAtLogin = launchAtLogin
         self.crashNotifications = crashNotifications
+        self.updateChecks = updateChecks
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         launchAtLogin = try c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
         crashNotifications = try c.decodeIfPresent(Bool.self, forKey: .crashNotifications) ?? true
+        updateChecks = try c.decodeIfPresent(Bool.self, forKey: .updateChecks) ?? true
     }
 }
 
