@@ -1,0 +1,19 @@
+Resources/Info.plist
+  s_1d14270400e3d8::t_c1f157e749faf1 16,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dba5cec9951abc396564b203e897ab09a65f9717",
+  "prompts": {},
+  "sessions": {
+    "s_1d14270400e3d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d371c930-dbe0-4c56-8257-247ed532fd8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Emrah Tokalak <emrahtokalak@gmail.com>"
+    }
+  }
+}
