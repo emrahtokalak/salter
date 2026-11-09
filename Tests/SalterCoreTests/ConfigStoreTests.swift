@@ -58,6 +58,7 @@ import Testing
         #expect(loaded.config.repos.first?.services == [])
         #expect(loaded.config.repos.first?.declinedSources == [])
         #expect(loaded.config.settings.crashNotifications)
+        #expect(loaded.config.settings.updateChecks)
         #expect(loaded.config.version == AppConfig.currentVersion)
     }
 

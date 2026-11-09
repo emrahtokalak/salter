@@ -162,7 +162,15 @@ struct Sidebar: View {
             .padding(.vertical, 6)
         }
         .background(Theme.panel)
-        .safeAreaInset(edge: .bottom) { newReposCard }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                if let release = model.updates.available {
+                    UpdateBanner(release: release).padding(.horizontal, 8).padding(.top, 8)
+                }
+                newReposCard
+            }
+            .background(Theme.panel)
+        }
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(.upArrow) { moveSelection(-1) }

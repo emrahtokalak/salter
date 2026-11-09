@@ -52,6 +52,11 @@ struct SettingsView: View {
                         get: { model.config.settings.crashNotifications },
                         set: { model.setCrashNotifications($0) }
                     ))
+                    Toggle("Güncellemeleri günde bir kontrol et", isOn: Binding(
+                        get: { model.config.settings.updateChecks },
+                        set: { model.setUpdateChecks($0) }
+                    ))
+                    updateStatus
                 }
                 .toggleStyle(.checkbox)
                 .font(.system(size: 12.5))
@@ -90,6 +95,39 @@ struct SettingsView: View {
         }
         .background(Theme.bg)
         .frame(width: 520, height: 520)
+    }
+
+    @ViewBuilder private var updateStatus: some View {
+        let updates = model.updates
+        HStack(spacing: 8) {
+            Button("Şimdi kontrol et") { updates.checkNow() }
+                .buttonStyle(QuietButtonStyle(height: 24))
+                .disabled(updates.checking || updates.current == nil)
+            if updates.checking {
+                ProgressView().controlSize(.small).scaleEffect(0.7)
+            }
+            Group {
+                if updates.current == nil {
+                    Text("Sürüm bilgisi yok (paketlenmemiş build)")
+                } else if let release = updates.available {
+                    HStack(spacing: 4) {
+                        Text("Şalter \(release.version.description) mevcut.")
+                        Button("İndir") { model.integration.open(release.pageURL) }
+                            .buttonStyle(PlainTextButtonStyle(color: Theme.accent))
+                    }
+                } else if updates.manualResult == .failed {
+                    Text("Kontrol edilemedi (bağlantı yok mu?)").foregroundStyle(Theme.warn)
+                } else if updates.manualResult == .upToDate {
+                    Text("Güncelsin (\(updates.current?.description ?? ""))")
+                } else if let last = updates.lastCheck {
+                    Text("Sürüm \(updates.current?.description ?? "") · son kontrol \(last.formatted(.relative(presentation: .named)))")
+                } else {
+                    Text("Sürüm \(updates.current?.description ?? "")")
+                }
+            }
+            .font(.system(size: 11.5))
+            .foregroundStyle(Theme.text3)
+        }
     }
 
     private func group<Content: View>(_ title: String, @ViewBuilder content: @escaping () -> Content) -> some View {

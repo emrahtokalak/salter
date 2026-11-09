@@ -18,6 +18,7 @@ final class AppModel {
     var selection: String?
     let resources = ResourceMonitor()
     let git = GitModel()
+    let updates = UpdateModel()
 
     @ObservationIgnored let integration = SystemIntegration()
     @ObservationIgnored private let configStore: ConfigStore
@@ -63,6 +64,10 @@ final class AppModel {
             resolveOrphans(adopt: adopt)
         }
         startPolling()
+        updates.notify = { [weak self] release in
+            self?.integration.notifyUpdate(version: release.version.description, page: release.pageURL)
+        }
+        updates.setEnabled(config.settings.updateChecks)
         resources.start { [weak self] in
             guard let self else { return [] }
             return self.supervisors.values.map {
@@ -432,6 +437,11 @@ final class AppModel {
 
     func setCrashNotifications(_ enabled: Bool) {
         mutate { $0.settings.crashNotifications = enabled }
+    }
+
+    func setUpdateChecks(_ enabled: Bool) {
+        mutate { $0.settings.updateChecks = enabled }
+        updates.setEnabled(enabled)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
