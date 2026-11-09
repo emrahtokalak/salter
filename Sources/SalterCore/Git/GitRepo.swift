@@ -36,8 +36,8 @@ public struct GitRepo: Equatable, Sendable {
     }
 
     public func branches() async -> GitBranchList {
-        let result = await git(["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes"])
-        return result.succeeded ? GitBranchList.parse(refs: result.stdout) : GitBranchList()
+        let result = await git(["for-each-ref", "--format=%(refname)%09%(worktreepath)", "refs/heads", "refs/remotes"])
+        return result.succeeded ? GitBranchList.parse(refs: result.stdout, currentWorktree: root) : GitBranchList()
     }
 
     public func fetch(timeout: TimeInterval = GitRepo.fetchTimeout) async -> GitResult {

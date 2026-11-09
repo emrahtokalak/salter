@@ -83,19 +83,33 @@ public struct RemoteBranch: Equatable, Hashable, Sendable {
 public struct GitBranchList: Equatable, Sendable {
     public var local: [String]
     public var remoteOnly: [RemoteBranch]
+    /// Local branch → path of the *other* worktree it is checked out in. git refuses to switch to these here.
+    public var worktrees: [String: String]
 
-    public init(local: [String] = [], remoteOnly: [RemoteBranch] = []) {
+    public init(local: [String] = [], remoteOnly: [RemoteBranch] = [], worktrees: [String: String] = [:]) {
         self.local = local
         self.remoteOnly = remoteOnly
+        self.worktrees = worktrees
     }
 
-    /// Parses `git for-each-ref --format=%(refname) refs/heads refs/remotes`.
-    public static func parse(refs text: String) -> GitBranchList {
+    /// The other worktree `branch` is checked out in, if any.
+    public func worktree(of branch: String) -> String? { worktrees[branch] }
+
+    /// Parses `git for-each-ref --format=%(refname)%09%(worktreepath) refs/heads refs/remotes`
+    /// (the tab and worktree path are optional). Worktree paths equal to `currentWorktree` are dropped.
+    public static func parse(refs text: String, currentWorktree: String? = nil) -> GitBranchList {
         var local: [String] = []
         var remotes: [RemoteBranch] = []
-        for line in text.split(separator: "\n") {
+        var worktrees: [String: String] = [:]
+        for record in text.split(separator: "\n") {
+            // Ref names cannot contain tabs; the path after the first one is taken verbatim.
+            let fields = record.split(separator: "\t", maxSplits: 1, omittingEmptySubsequences: false)
+            let line = fields[0]
+            let worktree = fields.count > 1 ? String(fields[1]) : ""
             if line.hasPrefix("refs/heads/") {
-                local.append(String(line.dropFirst("refs/heads/".count)))
+                let name = String(line.dropFirst("refs/heads/".count))
+                local.append(name)
+                if !worktree.isEmpty, worktree != currentWorktree { worktrees[name] = worktree }
             } else if line.hasPrefix("refs/remotes/") {
                 let rest = line.dropFirst("refs/remotes/".count)
                 guard let slash = rest.firstIndex(of: "/") else { continue }
@@ -109,7 +123,8 @@ public struct GitBranchList: Equatable, Sendable {
         let remoteOnly = remotes.filter { !localSet.contains($0.name) && seen.insert($0.name).inserted }
         return GitBranchList(
             local: local.sorted { $0.localizedStandardCompare($1) == .orderedAscending },
-            remoteOnly: remoteOnly.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            remoteOnly: remoteOnly.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },
+            worktrees: worktrees
         )
     }
 }
