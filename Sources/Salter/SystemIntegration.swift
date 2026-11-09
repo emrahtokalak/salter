@@ -49,4 +49,19 @@ final class SystemIntegration {
     func reveal(_ path: String) {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
+
+    static let vsCodeBundleID = "com.microsoft.VSCode"
+
+    var hasVSCode: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.vsCodeBundleID) != nil
+    }
+
+    /// Opens the folder in VS Code; falls back to Finder when VS Code is not installed.
+    func openInEditor(_ path: String) {
+        guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.vsCodeBundleID) else {
+            reveal(path)
+            return
+        }
+        NSWorkspace.shared.open([URL(fileURLWithPath: path)], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
+    }
 }

@@ -95,6 +95,11 @@ final class GitModel {
         trees[root]?.message = nil
     }
 
+    func showError(repoPath: String, _ text: String) {
+        guard let root = rootForRepo[repoPath] else { return }
+        show(Message(text: text, isError: true), in: root)
+    }
+
     private func show(_ message: Message, in root: String) {
         trees[root]?.message = message
         guard !message.isError else { return }

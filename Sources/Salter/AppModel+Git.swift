@@ -25,6 +25,17 @@ extension AppModel {
         runGit(id) { await $0.switchTo(target) }
     }
 
+    /// Opens a branch's other worktree; git keeps listing a deleted worktree folder until `git worktree prune`.
+    func gitOpenWorktree(_ id: String, path: String, reveal: Bool = false) {
+        guard FileManager.default.fileExists(atPath: path) else {
+            if let repo = repoPath(of: id) {
+                git.showError(repoPath: repo, "Worktree klasörü bulunamadı: \((path as NSString).abbreviatingWithTildeInPath). Silinmişse `git worktree prune` ile temizleyebilirsin.")
+            }
+            return
+        }
+        if reveal { integration.reveal(path) } else { integration.openInEditor(path) }
+    }
+
     private func runGit(_ id: String, _ action: @escaping @Sendable (GitRepo) async -> GitOutcome) {
         guard let path = repoPath(of: id), let shell = shell?.variables else { return }
         Task {

@@ -188,6 +188,34 @@ struct TempRemote {
         #expect(await repo.status()?.upstream == "origin/feature/x")
     }
 
+    @Test func branchesReportOtherWorktrees() async throws {
+        let t = try TempRemote()
+        let wt = t.base.appendingPathComponent("wt").path
+        try t.sh(["worktree", "add", "-b", "feature/wt", wt], in: t.work)
+        let repo = try await t.repo()
+        let branches = await repo.branches()
+        #expect(branches.local.contains("feature/wt"))
+        let path = try #require(branches.worktree(of: "feature/wt"))
+        #expect(URL(fileURLWithPath: path).resolvingSymlinksInPath() == URL(fileURLWithPath: wt).resolvingSymlinksInPath())
+        // The current worktree's own branch is not reported as "elsewhere".
+        #expect(branches.worktree(of: "main") == nil)
+        // Seen from the other worktree, it is the other way round.
+        let other = try #require(await GitRepo.open(wt, environment: t.env))
+        let fromOther = await other.branches()
+        #expect(fromOther.worktree(of: "main") != nil)
+        #expect(fromOther.worktree(of: "feature/wt") == nil)
+    }
+
+    @Test func deletedWorktreeFolderIsStillReported() async throws {
+        // Why the app checks the folder exists before opening it: git lists it until `git worktree prune`.
+        let t = try TempRemote()
+        let wt = t.base.appendingPathComponent("gone").path
+        try t.sh(["worktree", "add", "-b", "feature/gone", wt], in: t.work)
+        try FileManager.default.removeItem(atPath: wt)
+        let repo = try await t.repo()
+        #expect(await repo.branches().worktree(of: "feature/gone") != nil)
+    }
+
     @Test func fetchFromMissingRemoteFailsFast() async throws {
         let t = try TempRemote()
         try t.sh(["remote", "set-url", "origin", "/nonexistent-salter-remote"], in: t.work)

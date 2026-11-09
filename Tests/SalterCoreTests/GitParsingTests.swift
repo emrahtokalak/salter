@@ -69,5 +69,19 @@ import Testing
         """)
         #expect(b.local == ["feature/x", "main"])
         #expect(b.remoteOnly == [RemoteBranch(remote: "origin", name: "feature/y")])
+        #expect(b.worktrees.isEmpty)
+    }
+
+    @Test func branchListWorktreePaths() {
+        let b = GitBranchList.parse(refs: """
+        refs/heads/main	/repo
+        refs/heads/feature/x	/repo-wt/feature x
+        refs/heads/idle	
+        refs/remotes/origin/main	
+        """, currentWorktree: "/repo")
+        #expect(b.local == ["feature/x", "idle", "main"])
+        #expect(b.worktrees == ["feature/x": "/repo-wt/feature x"])
+        #expect(b.worktree(of: "feature/x") == "/repo-wt/feature x")
+        #expect(b.worktree(of: "main") == nil)
     }
 }

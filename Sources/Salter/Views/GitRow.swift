@@ -168,9 +168,26 @@ struct BranchPicker: View {
                         SectionLabel("Yerel").padding(.horizontal, 8).padding(.top, 8).padding(.bottom, 2)
                         ForEach(local, id: \.self) { name in
                             let current = name == status?.branch
-                            BranchRow(name: name, remote: nil, current: current, disabled: !current && !dirty.isEmpty) {
-                                if !current { model.gitSwitch(serviceID, to: .local(name)) }
-                                close()
+                            if !current, let worktree = branches.worktree(of: name) {
+                                // git refuses to check out a branch that another worktree holds; open that worktree instead.
+                                BranchRow(name: name, remote: nil, worktree: worktree, current: false, disabled: false) {
+                                    model.gitOpenWorktree(serviceID, path: worktree)
+                                    close()
+                                }
+                                .help(worktreeHelp(worktree))
+                                .contextMenu {
+                                    Button(model.integration.hasVSCode ? "VS Code'da aç" : "Finder'da göster") {
+                                        model.gitOpenWorktree(serviceID, path: worktree)
+                                    }
+                                    if model.integration.hasVSCode {
+                                        Button("Finder'da göster") { model.gitOpenWorktree(serviceID, path: worktree, reveal: true) }
+                                    }
+                                }
+                            } else {
+                                BranchRow(name: name, remote: nil, current: current, disabled: !current && !dirty.isEmpty) {
+                                    if !current { model.gitSwitch(serviceID, to: .local(name)) }
+                                    close()
+                                }
                             }
                         }
                     }
@@ -203,11 +220,19 @@ struct BranchPicker: View {
     private func matches(_ name: String) -> Bool {
         query.isEmpty || name.localizedCaseInsensitiveContains(query)
     }
+
+    private func worktreeHelp(_ path: String) -> String {
+        let shown = (path as NSString).abbreviatingWithTildeInPath
+        let action = model.integration.hasVSCode ? "VS Code'da açmak" : "Finder'da göstermek"
+        return "Bu branch başka bir worktree'de açık:\n\(shown)\nO klasörü \(action) için tıkla."
+    }
 }
 
 private struct BranchRow: View {
     let name: String
     let remote: String?
+    /// Another worktree holding this branch; shown as a folder badge.
+    var worktree: String? = nil
     let current: Bool
     let disabled: Bool
     let action: () -> Void
@@ -230,6 +255,18 @@ private struct BranchRow: View {
                     Text(remote).font(.system(size: 11)).foregroundStyle(Theme.text3)
                 }
                 Spacer(minLength: 0)
+                if let worktree {
+                    HStack(spacing: 3) {
+                        Image(systemName: "folder").font(.system(size: 9.5))
+                        Text((worktree as NSString).lastPathComponent)
+                            .font(.system(size: 11))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .foregroundStyle(Theme.text3)
+                    .frame(maxWidth: 110, alignment: .trailing)
+                    .layoutPriority(-1)
+                }
             }
             .padding(.horizontal, 8)
             .frame(height: 26)
